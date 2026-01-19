@@ -28,3 +28,4 @@ export const pixelArtNeutral = () => import('@dicebear/pixel-art-neutral');
 export const rings = () => import('@dicebear/rings');
 export const shapes = () => import('@dicebear/shapes');
 export const thumbs = () => import('@dicebear/thumbs');
+export const toonHead = () => import('@dicebear/toon-head');
