@@ -24,4 +24,6 @@ EXPOSE 8080
 # Start PocketBase
 # --http=0.0.0.0:8080 makes it listen to Railway's network
 # Add the --publicDir flag explicitly
-CMD ["/pb/pocketbase", "serve", "--http=0.0.0.0:8080", "--publicDir=/pb/pb_public"]
+# We add --publicDir to specify where the React files are
+# We add --indexFallback to tell PB: "If you don't find an API route or a file, send it to React"
+CMD ["/pb/pocketbase", "serve", "--http=0.0.0.0:8080", "--publicDir=/pb/pb_public", "--indexFallback"]

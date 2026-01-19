@@ -15,7 +15,10 @@ function getToken() {
 }
 
 async function pbRequest(path, opts = {}) {
-  const url = `${base.replace(/\/$/, '')}${path}`;
+  // / Ensure we don't double up on /api
+  const cleanPath = path.startsWith('/api') ? path.replace('/api', '') : path;
+  const url = `${base}${cleanPath}`;
+  // const url = `${base.replace(/\/$/, '')}${path}`;
   const headers = opts.headers || {};
   const token = getToken();
   if (token) headers['Authorization'] = token;
