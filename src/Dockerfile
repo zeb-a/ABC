@@ -23,4 +23,5 @@ EXPOSE 8080
 
 # Start PocketBase
 # --http=0.0.0.0:8080 makes it listen to Railway's network
-CMD ["/pb/pocketbase", "serve", "--http=0.0.0.0:8080"]
+# Add the --publicDir flag explicitly
+CMD ["/pb/pocketbase", "serve", "--http=0.0.0.0:8080", "--publicDir=/pb/pb_public"]
