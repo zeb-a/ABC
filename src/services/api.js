@@ -14,6 +14,10 @@ function getToken() {
   return localStorage.getItem('classABC_pb_token') || null;
 }
 
+// PocketBase uses an internal collection id for auth users. Use the id to avoid
+// name-based routing mismatches between PocketBase versions.
+const AUTH_COLL = '_pb_users_auth_';
+
 async function pbRequest(path, opts = {}) {
   // / Ensure we don't double up on /api
   const cleanPath = path.startsWith('/api') ? path.replace('/api', '') : path;
@@ -122,7 +126,7 @@ async getStudentByParentCode(code) {
     }
   },
   async register({ email, password, name }) {
-    const user = await pbRequest('/collections/users/records/', {
+    const user = await pbRequest(`/collections/${AUTH_COLL}/records`, {
       method: 'POST',
       body: JSON.stringify({
         email,
@@ -134,7 +138,7 @@ async getStudentByParentCode(code) {
 
     // Request email verification
     try {
-      await pbRequest('/collections/users/request-verification', {
+      await pbRequest(`/collections/${AUTH_COLL}/request-verification`, {
         method: 'POST',
         body: JSON.stringify({ email })
       });
@@ -149,7 +153,7 @@ async getStudentByParentCode(code) {
   },
 
   async login({ email, password }) {
-    const auth = await pbRequest('/collections/users/auth-with-password', {
+    const auth = await pbRequest(`/collections/${AUTH_COLL}/auth-with-password`, {
       method: 'POST',
       body: JSON.stringify({ identity: email, password })
     });
@@ -170,14 +174,14 @@ async getStudentByParentCode(code) {
   },
 
   async forgotPassword(email) {
-    return await pbRequest('/collections/users/request-password-reset', {
+    return await pbRequest(`/collections/${AUTH_COLL}/request-password-reset`, {
       method: 'POST',
       body: JSON.stringify({ email })
     });
   },
 
   async verifyEmail(token) {
-    return await pbRequest('/collections/users/confirm-verification', {
+    return await pbRequest(`/collections/${AUTH_COLL}/confirm-verification`, {
       method: 'POST',
       body: JSON.stringify({ token })
     });
@@ -229,7 +233,7 @@ if (avatar && avatar.startsWith('data:image')) {
 
     // Update user with FormData (for file upload support)
     try {
-      const url = `${base.replace(/\/$/, '')}/collections/users/records/${id}`;
+      const url = `${base.replace(/\/$/, '')}/collections/${AUTH_COLL}/records/${id}`;
       const requestToken = getToken();
       const headers = {};
       if (requestToken) headers['Authorization'] = requestToken;
@@ -252,10 +256,10 @@ if (avatar && avatar.startsWith('data:image')) {
       // Construct proper avatar URL if it's a filename
       let avatarUrl = data.avatar;
       if (data.avatar && !data.avatar.startsWith('http') && !data.avatar.startsWith('')) {
-        // It's a filename, construct the full URL
+        // It's a filename, construct the full URL using the auth collection id
         const baseUrl = base.replace(/\/api$/, '');
         // Add a timestamp (?t=...) to bypass browser cache so the new image shows immediately
-avatarUrl = `${baseUrl}/api/files/users/${data.id}/${data.avatar}?t=${Date.now()}`;
+        avatarUrl = `${baseUrl}/api/files/${AUTH_COLL}/${data.id}/${data.avatar}?t=${Date.now()}`;
       }
 
       // ...existing code...
