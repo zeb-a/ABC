@@ -19,7 +19,7 @@ export const portalTour = {
     {
       element: '.add-class-button',
       popover: {
-        title: '👋 Welcome to Class123!',
+      title: '👋 Welcome to classABC!',
         description: 'Click here to create your first class.',
         side: 'bottom',
         align: 'start',
@@ -182,7 +182,7 @@ export const startTour = (tourConfig, onComplete) => {
  */
 export const hasTourBeenCompleted = (email, tourName) => {
   if (!email) return false;
-  const key = `class123_tour_${tourName}_${email}`;
+  const key = `classABC_tour_${tourName}_${email}`;
   return localStorage.getItem(key) === 'true';
 };
 
@@ -191,7 +191,7 @@ export const hasTourBeenCompleted = (email, tourName) => {
  */
 export const markTourAsCompleted = (email, tourName) => {
   if (!email) return;
-  const key = `class123_tour_${tourName}_${email}`;
+  const key = `classABC_tour_${tourName}_${email}`;
   localStorage.setItem(key, 'true');
 };
 
@@ -200,6 +200,6 @@ export const markTourAsCompleted = (email, tourName) => {
  */
 export const resetTours = (email) => {
   if (!email) return;
-  localStorage.removeItem(`class123_tour_portal_${email}`);
-  localStorage.removeItem(`class123_tour_dashboard_${email}`);
+  localStorage.removeItem(`classABC_tour_portal_${email}`);
+  localStorage.removeItem(`classABC_tour_dashboard_${email}`);
 };

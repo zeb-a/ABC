@@ -37,7 +37,7 @@ const StudentPortal = ({ onBack, classes = [], refreshClasses }) => {
   // 1. SESSION & STORAGE
   const session = useMemo(() => {
     try {
-      const saved = localStorage.getItem('class123_student_portal');
+      const saved = localStorage.getItem('classABC_student_portal');
       return saved ? JSON.parse(saved) : null;
     // eslint-disable-next-line no-unused-vars
     } catch (e) { return null; }
@@ -45,14 +45,14 @@ const StudentPortal = ({ onBack, classes = [], refreshClasses }) => {
 
   const [completedAssignments, setCompletedAssignments] = useState(() => {
     try {
-      const saved = localStorage.getItem('class123_completed_assignments');
+      const saved = localStorage.getItem('classABC_completed_assignments');
       return saved ? JSON.parse(saved) : [];
     } catch (e) { return []; }
   });
 
   const [hiddenAssignments, setHiddenAssignments] = useState(() => {
     try {
-      const saved = localStorage.getItem('class123_hidden_assignments');
+      const saved = localStorage.getItem('classABC_hidden_assignments');
       return saved ? JSON.parse(saved) : [];
     // eslint-disable-next-line no-unused-vars
     } catch (e) { return []; }
@@ -95,12 +95,12 @@ const StudentPortal = ({ onBack, classes = [], refreshClasses }) => {
     if (!deleteTarget) return;
     const newHidden = [...hiddenAssignments, deleteTarget];
     setHiddenAssignments(newHidden);
-    localStorage.setItem('class123_hidden_assignments', JSON.stringify(newHidden));
+    localStorage.setItem('classABC_hidden_assignments', JSON.stringify(newHidden));
     setDeleteTarget(null);
   };
 
   const handleLogout = () => {
-    localStorage.removeItem('class123_student_portal');
+    localStorage.removeItem('classABC_student_portal');
     onBack();
   };
 
@@ -116,7 +116,7 @@ const StudentPortal = ({ onBack, classes = [], refreshClasses }) => {
         onCompletion={(id) => {
           const newList = [...completedAssignments, id];
           setCompletedAssignments(newList);
-          localStorage.setItem('class123_completed_assignments', JSON.stringify(newList));
+          localStorage.setItem('classABC_completed_assignments', JSON.stringify(newList));
         }}
       />
     );

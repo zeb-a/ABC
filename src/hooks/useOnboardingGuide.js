@@ -14,7 +14,7 @@ export function useOnboardingGuide(steps, userId) {
   // Check if guide has been completed
   useEffect(() => {
     if (!userId) return;
-    const completed = localStorage.getItem(`class123_guide_completed_${userId}`);
+    const completed = localStorage.getItem(`classABC_guide_completed_${userId}`);
     setIsCompleted(!!completed);
   }, [userId]);
 
@@ -31,7 +31,7 @@ export function useOnboardingGuide(steps, userId) {
     setCurrentStepIndex(0);
     setIsCompleted(true);
     if (userId) {
-      localStorage.setItem(`class123_guide_completed_${userId}`, 'true');
+      localStorage.setItem(`classABC_guide_completed_${userId}`, 'true');
     }
   }, [userId]);
 

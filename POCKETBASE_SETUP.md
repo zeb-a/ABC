@@ -5,7 +5,7 @@
 The backend now uses PocketBase instead of a custom Node server.
 
 ```bash
-cd /Users/mikelast/Desktop/class123-clone
+cd /Users/mikelast/Desktop/classABC
 pocketbase serve --http=127.0.0.1:4002
 ```
 

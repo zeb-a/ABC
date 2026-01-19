@@ -1,0 +1,88 @@
+:root{
+  --lp-ease: cubic-bezier(.2,.9,.2,1);
+}
+
+/* Respect user preference */
+@media (prefers-reduced-motion: reduce) {
+  .lp-bento-card, .lp-app-card, .lp-role-option, .lp-cta { transition: none !important; }
+}
+
+.lp-bento-card {
+  transition: box-shadow 320ms var(--lp-ease);
+}
+.lp-bento-card:hover {
+  box-shadow: 0 18px 40px rgba(2,6,23,0.12);
+}
+.lp-app-card {
+  transition: box-shadow 260ms var(--lp-ease);
+  border-radius: 14px;
+}
+.lp-app-card:hover {
+  box-shadow: 0 12px 30px rgba(2,6,23,0.10);
+}
+.lp-role-option {
+  transition: box-shadow 300ms var(--lp-ease), background-color 300ms var(--lp-ease);
+}
+.lp-role-option:hover {
+  box-shadow: 0 12px 30px rgba(2,6,23,0.06);
+}
+.lp-cta {
+  transition: box-shadow 220ms var(--lp-ease), filter 220ms var(--lp-ease);
+}
+.lp-cta:hover {
+  box-shadow: 0 12px 30px rgba(2,6,23,0.12);
+}
+
+/* Nav link / small text buttons */
+.lp-nav-link {
+  background: transparent;
+  padding: 8px 10px;
+  border-radius: 10px;
+  transition: background-color 200ms var(--lp-ease), color 200ms var(--lp-ease), transform 240ms var(--lp-ease), box-shadow 240ms var(--lp-ease);
+  color: #475569;
+  font-weight: 700;
+  border: none;
+  cursor: pointer;
+  transform-origin: 50% 50%;
+}
+.lp-nav-link:hover,
+.lp-nav-link:focus {
+  background-color: rgba(26,26,26,0.06);
+  color: #16A34A; /* obvious green accent on hover */
+  transform: scale(1.06);
+  box-shadow: 0 20px 44px rgba(2,6,23,0.09);
+  outline: none;
+}
+
+/* Prominent signup button in navbar */
+.lp-signup-btn {
+  transition: background-color 200ms var(--lp-ease), transform 240ms var(--lp-ease), box-shadow 240ms var(--lp-ease), color 200ms var(--lp-ease);
+  border: none;
+  cursor: pointer;
+  transform-origin: 50% 50%;
+}
+.lp-signup-btn:hover,
+.lp-signup-btn:focus {
+  background-color: #0f1724;
+  transform: scale(1.12);
+  box-shadow: 0 28px 60px rgba(2,6,23,0.16);
+  color: #fff;
+  outline: none;
+}
+
+/* Make CTAs pop slightly more */
+.lp-cta {
+  transition: transform 180ms var(--lp-ease), box-shadow 220ms var(--lp-ease), background-color 160ms var(--lp-ease), color 160ms var(--lp-ease);
+  transform-origin: 50% 50%;
+}
+.lp-cta:hover {
+  transform: scale(1.08);
+  box-shadow: 0 30px 70px rgba(2,6,23,0.18);
+  background-color: #0f1724; /* subtle darken so white text pops */
+  color: #fff;
+}
+
+/* Slightly reduce motion on small screens */
+@media (max-width: 768px) {
+  .lp-bento-card:hover, .lp-app-card:hover, .lp-role-option:hover, .lp-cta:hover { transform: scale(1.02); }
+}

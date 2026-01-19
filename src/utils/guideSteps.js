@@ -6,7 +6,7 @@ export const GUIDE_STEPS = {
   portal: [
     {
       id: 'welcome',
-      title: '👋 Welcome to Class123!',
+      title: '👋 Welcome to classABC!',
       description: 'Click the "Add Class" button to create your first class.',
       target: '.add-class-button',
       action: 'click',
@@ -110,7 +110,7 @@ export const GUIDE_STEPS = {
  */
 export const hasCompletedGuide = (email, view) => {
   if (!email) return false;
-  const key = `class123_guide_${view}_${email}`;
+  const key = `classABC_guide_${view}_${email}`;
   return localStorage.getItem(key) === 'true';
 };
 
@@ -119,7 +119,7 @@ export const hasCompletedGuide = (email, view) => {
  */
 export const markGuideComplete = (email, view) => {
   if (!email) return;
-  const key = `class123_guide_${view}_${email}`;
+  const key = `classABC_guide_${view}_${email}`;
   localStorage.setItem(key, 'true');
 };
 
@@ -128,6 +128,6 @@ export const markGuideComplete = (email, view) => {
  */
 export const resetGuide = (email) => {
   if (!email) return;
-  localStorage.removeItem(`class123_guide_portal_${email}`);
-  localStorage.removeItem(`class123_guide_dashboard_${email}`);
+  localStorage.removeItem(`classABC_guide_portal_${email}`);
+  localStorage.removeItem(`classABC_guide_dashboard_${email}`);
 };

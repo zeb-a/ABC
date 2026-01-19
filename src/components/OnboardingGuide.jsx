@@ -6,7 +6,7 @@ const ONBOARDING_STEPS = {
   portal: [
     {
       id: 'welcome',
-      title: '👋 Welcome to Class123!',
+      title: '👋 Welcome to classABC!',
       description: 'Let\'s set up your classroom! First, you need to create a new class.',
       target: '.add-class-button',
       highlightClass: 'add-class-button',

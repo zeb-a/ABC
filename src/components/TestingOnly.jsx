@@ -86,7 +86,7 @@ export default function Index({ onLoginSuccess, classes, setClasses, refreshClas
       }
       if (foundStudent && foundClass) {
         const sessionData = { studentId: String(foundStudent.id), studentName: foundStudent.name, accessCode: cleanCode, classId: String(foundClass.id) };
-        localStorage.setItem('class123_student_portal', JSON.stringify(sessionData));
+        localStorage.setItem('classABC_student_portal', JSON.stringify(sessionData));
         setLoading(false); setModalMode(null); setPortalView('student');
       } else {
         setError('Invalid student code or class not found.');

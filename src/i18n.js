@@ -160,11 +160,11 @@ const TRANSLATIONS = {
 
 export function LanguageProvider({ children }) {
 	const [lang, setLang] = useState(() => {
-		try { return localStorage.getItem('class123_lang') || 'en'; } catch { return 'en'; }
+		try { return localStorage.getItem('classABC_lang') || 'en'; } catch { return 'en'; }
 	});
 
 	useEffect(() => {
-		try { localStorage.setItem('class123_lang', lang); } catch {
+		try { localStorage.setItem('classABC_lang', lang); } catch {
 			// Intentionally ignore localStorage errors
 		}
 	}, [lang]);

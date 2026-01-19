@@ -46,8 +46,8 @@ const INITIAL_BEHAVIORS = [
 function App() {
     const [landingModal, setLandingModal] = useState(null); // 'login' | 'signup' | null
   const [user, setUser] = useState(() => {
-    const stored = localStorage.getItem('class123_logged_in');
-    const token = localStorage.getItem('class123_pb_token') || localStorage.getItem('class123_token');
+    const stored = localStorage.getItem('classABC_logged_in');
+    const token = localStorage.getItem('classABC_pb_token') || localStorage.getItem('classABC_token');
     if (stored && token) {
       return JSON.parse(stored);
     }
@@ -55,16 +55,16 @@ function App() {
   });
   const [showProfile, setShowProfile] = useState(false);
   const [classes, setClasses] = useState([]);
-  const [behaviors, setBehaviors] = useState(() => JSON.parse(localStorage.getItem('class123_behaviors')) || INITIAL_BEHAVIORS);
+  const [behaviors, setBehaviors] = useState(() => JSON.parse(localStorage.getItem('classABC_behaviors')) || INITIAL_BEHAVIORS);
   const [activeClassId, setActiveClassId] = useState(null);
   const [view, setView] = useState('portal'); // 'portal' | 'dashboard' | 'egg' | 'settings' | 'setup'
   const [showOnboarding, setShowOnboarding] = useState(() => {
     // Check if user has completed onboarding
     if (typeof window !== 'undefined') {
-      const stored = localStorage.getItem('class123_logged_in');
+      const stored = localStorage.getItem('classABC_logged_in');
       if (stored) {
         const parsedUser = JSON.parse(stored);
-        const hasCompletedOnboarding = localStorage.getItem(`class123_onboarding_${parsedUser.email}`);
+        const hasCompletedOnboarding = localStorage.getItem(`classABC_onboarding_${parsedUser.email}`);
         return !hasCompletedOnboarding;
       }
     }
@@ -102,7 +102,7 @@ function App() {
   // eslint-disable-next-line react-hooks/rules-of-hooks
   useEffect(() => {
     // restore token into api layer if present
-    const token = localStorage.getItem('class123_pb_token') || localStorage.getItem('class123_token');
+    const token = localStorage.getItem('classABC_pb_token') || localStorage.getItem('classABC_token');
     if (token) api.setToken(token);
 
 
@@ -126,7 +126,7 @@ function App() {
             } catch {
               console.warn('Could not parse stored user, falling back to localStorage');
               // Fallback to localStorage
-              const key = `class123_data_${'anonymous'}`;
+              const key = `classABC_data_${'anonymous'}`;
               const localClasses = JSON.parse(localStorage.getItem(key)) || [];
               if (localClasses.length > 0 && mounted) {
                 setClasses(localClasses);
@@ -148,7 +148,7 @@ function App() {
       } catch {
         // backend not available — load from localStorage fallback
         const userEmail = user?.email || 'anonymous';
-        const key = `class123_data_${userEmail}`;
+        const key = `classABC_data_${userEmail}`;
         const localClasses = JSON.parse(localStorage.getItem(key)) || [];
         if (mounted) setClasses(localClasses);
       }
@@ -165,7 +165,7 @@ function App() {
         }
       } catch (e) {
         // backend not available — load from localStorage fallback
-        const localBehaviors = JSON.parse(localStorage.getItem('class123_behaviors')) || INITIAL_BEHAVIORS;
+        const localBehaviors = JSON.parse(localStorage.getItem('classABC_behaviors')) || INITIAL_BEHAVIORS;
         if (mounted) setBehaviors(localBehaviors);
         console.warn('Loading behaviors from localStorage due to API error:', e.message);
       }
@@ -177,8 +177,8 @@ function App() {
   // persist behaviors and classes per user (localStorage + backend when available)
   // eslint-disable-next-line react-hooks/rules-of-hooks
   useEffect(() => {
-    localStorage.setItem('class123_behaviors', JSON.stringify(behaviors));
-    const token = localStorage.getItem('class123_pb_token') || localStorage.getItem('class123_token');
+    localStorage.setItem('classABC_behaviors', JSON.stringify(behaviors));
+    const token = localStorage.getItem('classABC_pb_token') || localStorage.getItem('classABC_token');
 
     if (user && token && (behaviors.length > 0 || classes.length > 0) && activeClassId) {
       // Debounce saves to avoid duplicate records
@@ -205,23 +205,23 @@ function App() {
 
   const onLoginSuccess = (u) => {
     api.setToken(u.token);
-    localStorage.setItem('class123_pb_token', u.token);
-    localStorage.setItem('class123_logged_in', JSON.stringify(u));
+    localStorage.setItem('classABC_pb_token', u.token);
+    localStorage.setItem('classABC_logged_in', JSON.stringify(u));
     // Clear old localStorage data to avoid mixing with PocketBase
-    localStorage.removeItem(`class123_data_${u.email}`);
-    localStorage.removeItem('class123_behaviors');
+    localStorage.removeItem(`classABC_data_${u.email}`);
+    localStorage.removeItem('classABC_behaviors');
     setUser(u);
     // Check if this is a new user (no onboarding flag set)
-    const hasCompletedOnboarding = localStorage.getItem(`class123_onboarding_${u.email}`);
+    const hasCompletedOnboarding = localStorage.getItem(`classABC_onboarding_${u.email}`);
     setShowOnboarding(!hasCompletedOnboarding);
   };
 
   const onLogout = () => {
-    localStorage.removeItem('class123_logged_in');
+    localStorage.removeItem('classABC_logged_in');
     // clear any persisted auth token
     api.setToken(null);
-    localStorage.removeItem('class123_pb_token');
-    localStorage.removeItem('class123_token');
+    localStorage.removeItem('classABC_pb_token');
+    localStorage.removeItem('classABC_token');
     setUser(null);
     setClasses([]);
     setActiveClassId(null);

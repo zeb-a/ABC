@@ -1,26 +1,16 @@
 // api.js
 const base = (() => {
-  // Always use the environment variable if set
   if (import.meta.env.VITE_BACKEND_URL) {
-    const url = import.meta.env.VITE_BACKEND_URL;
-    // Ensure /api is in the URL
-    if (!url.includes('/api')) {
-      return url.replace(/\/$/, '') + '/api';
-    }
-    return url;
+    return import.meta.env.VITE_BACKEND_URL.replace(/\/$/, '') + '/api';
   }
-
-  if (import.meta.env.DEV) {
-    // Dev mode: use relative path (proxied by Vite)
-    return '/api';
-  }
-
-  // Production: use full URL to PocketBase
-  return 'localhost:4002/api';
+  // In both Dev and Production, /api works if you proxy in dev 
+  // and host together in production.
+  return '/api'; 
 })();
 
+// Get auth token from localStorage
 function getToken() {
-  return localStorage.getItem('class123_pb_token') || null;
+  return localStorage.getItem('classABC_pb_token') || null;
 }
 
 async function pbRequest(path, opts = {}) {
@@ -170,7 +160,7 @@ async getStudentByParentCode(code) {
     // }
 
     if (auth.token) {
-      localStorage.setItem('class123_pb_token', auth.token);
+      localStorage.setItem('classABC_pb_token', auth.token);
     }
     return { user: { email: auth.record.email, name: auth.record.name, id: auth.record.id }, token: auth.token };
   },
@@ -479,7 +469,7 @@ avatarUrl = `${baseUrl}/api/files/users/${data.id}/${data.avatar}?t=${Date.now()
   },
 
   setToken(token) {
-    if (token) localStorage.setItem('class123_pb_token', token);
-    else localStorage.removeItem('class123_pb_token');
+    if (token) localStorage.setItem('classABC_pb_token', token);
+    else localStorage.removeItem('classABC_pb_token');
   }
 };
