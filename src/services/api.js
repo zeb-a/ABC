@@ -8,6 +8,7 @@ const base = (() => {
   return '/api'; 
 })();
 
+
 // Get auth token from localStorage
 function getToken() {
   return localStorage.getItem('classABC_pb_token') || null;
@@ -118,7 +119,7 @@ async getStudentByParentCode(code) {
     }
   },
   async register({ email, password, name }) {
-    const user = await pbRequest('/collections/users/records', {
+    const user = await pbRequest('/collections/users/records/', {
       method: 'POST',
       body: JSON.stringify({
         email,
