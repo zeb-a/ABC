@@ -2,7 +2,7 @@
 FROM node:20-alpine AS build-stage
 WORKDIR /app
 COPY package*.json ./
-RUN npm ci --omit=dev
+RUN npm install
 COPY . .
 # This creates the /dist folder on Railway's server
 RUN npm run build
