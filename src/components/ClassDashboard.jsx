@@ -86,6 +86,34 @@ export default function ClassDashboard({
   const [displaySize, setDisplaySize] = useState('big');
   const [selectedStudents, setSelectedStudents] = useState(new Set());
   const [showClassBehaviorModal, setShowClassBehaviorModal] = useState(false);
+  // Animations for awarded students: id -> { type }
+  const [animatingStudents, setAnimatingStudents] = useState({});
+
+  const prefersReducedMotion = typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  const triggerAnimationForIds = (ids = [], points = 1) => {
+    if (prefersReducedMotion) return;
+    const map = {
+      1: { type: 'small', dur: 800 },
+      2: { type: 'medium', dur: 1200 },
+      3: { type: 'large', dur: 1600 },
+      5: { type: 'confetti', dur: 2200 }
+    };
+    const { type, dur } = map[points] || { type: 'small', dur: 900 };
+    setAnimatingStudents((prev) => {
+      const copy = { ...prev };
+      ids.forEach((id) => { copy[id] = { type }; });
+      return copy;
+    });
+    // Clear after duration
+    setTimeout(() => {
+      setAnimatingStudents((prev) => {
+        const copy = { ...prev };
+        ids.forEach((id) => { delete copy[id]; });
+        return copy;
+      });
+    }, dur);
+  };
   const [showGridMenu, setShowGridMenu] = useState(false);
   const [showPoint, setShowPoint] = useState({ visible: false, student: null, points: 1, behaviorEmoji: '⭐' });
   const [isAttendanceMode, setIsAttendanceMode] = useState(false);
@@ -362,6 +390,8 @@ export default function ClassDashboard({
           : c
       )
     );
+    // Trigger animation for the single winner
+    try { triggerAnimationForIds([selectedStudent.id], behavior.pts); } catch (e) { /* ignore */ }
     setSelectedStudent(null);
   };
 
@@ -372,6 +402,8 @@ export default function ClassDashboard({
       prev.map((c) => (c.id === activeClass.id ? { ...c, students: c.students.map((s) => ({ ...s, score: s.score + behavior.pts })) } : c))
     );
     setShowClassBehaviorModal(false);
+    // Trigger animation for whole class
+    try { triggerAnimationForIds(activeClass.students.map(s => s.id), behavior.pts); } catch (e) {}
   };
   // --- SURGICAL ADDITION FOR LUCKY DRAW MULTI-WINNERS ---
   const handleGivePointsToMultiple = (studentsArray, points = 1) => {
@@ -413,6 +445,8 @@ export default function ClassDashboard({
           : c
       )
     );
+    // Trigger animation for winners
+    try { triggerAnimationForIds(studentsArray.map(w => w.id), points); } catch (e) {}
   };
   if (!activeClass) return <div style={styles.layout}>No class selected</div>;
   // Sum up all points from all students safely
@@ -976,7 +1010,14 @@ export default function ClassDashboard({
                             pointerEvents: 'auto'
                           }}
                         >
-                          <StudentCard student={s} onClick={() => { if (isAttendanceMode) { const next = new Set(absentStudents); if (next.has(s.id)) next.delete(s.id); else next.add(s.id); setAbsentStudents(next); } else if (!isAbsentToday) { setSelectedStudent(s); } }} onEdit={handleEditStudent} onDelete={() => setDeleteConfirmStudentId(s.id)} />
+                          <StudentCard
+                            student={s}
+                            onClick={() => { if (isAttendanceMode) { const next = new Set(absentStudents); if (next.has(s.id)) next.delete(s.id); else next.add(s.id); setAbsentStudents(next); } else if (!isAbsentToday) { setSelectedStudent(s); } }}
+                            onEdit={handleEditStudent}
+                            onDelete={() => setDeleteConfirmStudentId(s.id)}
+                            animating={Boolean(animatingStudents && animatingStudents[s.id])}
+                            animationType={animatingStudents && animatingStudents[s.id] ? animatingStudents[s.id].type : undefined}
+                          />
                           {selectedStudents.has(s.id) && <div style={{ position: 'absolute', inset: 0, borderRadius: '24px', border: '3px solid #4CAF50', pointerEvents: 'none' }} />}
                           {isAbsentToday && !isAttendanceMode && <div style={{ position: 'absolute', inset: 0, borderRadius: '24px', border: '3px solid #FF9800', background: 'rgba(255, 152, 0, 0.1)', pointerEvents: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '24px', fontWeight: 'bold', color: '#FF9800' }}>ABSENT TODAY</div>}
                         </div>
