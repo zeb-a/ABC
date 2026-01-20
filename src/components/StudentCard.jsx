@@ -3,7 +3,7 @@ import { boringAvatar, fallbackInitialsDataUrl } from '../utils/avatar';
 import SafeAvatar from './SafeAvatar';
 import { Edit2, Trash2 } from 'lucide-react';
 
-const StudentCard = ({ student, onClick, onEdit, onDelete, pulse }) => {
+const StudentCard = ({ student, onClick, onEdit, onDelete }) => {
   const [isHovered, setIsHovered] = useState(false);
   const displayAvatar = student.avatar || boringAvatar(student.name, student.gender);
 
@@ -27,7 +27,7 @@ const StudentCard = ({ student, onClick, onEdit, onDelete, pulse }) => {
         justifyContent: 'center',
         boxShadow: '0 8px 16px rgba(0,0,0,0.05)',
         cursor: 'pointer',
-        transition: 'transform 0.18s cubic-bezier(.2,.9,.2,1), box-shadow 0.18s',
+        transition: 'transform 0.2s',
         position: 'relative',
         aspectRatio: '1 / 1'
       }}
@@ -40,8 +40,6 @@ const StudentCard = ({ student, onClick, onEdit, onDelete, pulse }) => {
         e.currentTarget.style.transform = 'scale(1)';
       }}
     >
-      {/* pulse animation when the student receives points */}
-      {pulse && <div style={{ position: 'absolute', inset: 0, borderRadius: '24px', boxShadow: '0 25px 60px rgba(76,175,80,0.18)', transform: 'scale(1.03)', pointerEvents: 'none', transition: 'all 0.25s' }} />}
       {isHovered && (onEdit || onDelete) && (
         <div style={{
           position: 'absolute', top: '10px', right: '10px',

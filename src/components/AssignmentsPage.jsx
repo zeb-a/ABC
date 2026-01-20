@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import InlineHelpButton from './InlineHelpButton';
 import {
   Plus, Send, Trash2, ChevronLeft, ChevronRight, Image as ImageIcon,
   Type, List, AlignLeft, Grid, FileText, X, GripVertical,
@@ -124,14 +125,14 @@ export default function AssignmentsPage({ activeClass, onBack, onPublish }) {
       )}
       <header style={styles.header}>
         
-        <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
-        
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
           <input
             style={styles.titleInput}
             placeholder="Type Worksheet title..."
             value={title}
             onChange={e => setTitle(e.target.value)}
           />
+          <InlineHelpButton pageId="assignments" />
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
           <div style={styles.distributionSelector}>

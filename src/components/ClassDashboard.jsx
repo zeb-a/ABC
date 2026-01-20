@@ -88,7 +88,6 @@ export default function ClassDashboard({
   const [showClassBehaviorModal, setShowClassBehaviorModal] = useState(false);
   const [showGridMenu, setShowGridMenu] = useState(false);
   const [showPoint, setShowPoint] = useState({ visible: false, student: null, points: 1, behaviorEmoji: '⭐' });
-  const [animatingStudentIds, setAnimatingStudentIds] = useState(new Set());
   const [isAttendanceMode, setIsAttendanceMode] = useState(false);
   const [absentStudents, setAbsentStudents] = useState(new Set());
   
@@ -338,19 +337,6 @@ export default function ClassDashboard({
     }
     setShowPoint({ visible: true, student: selectedStudent, points: behavior.pts, behaviorEmoji: behavior.icon || '⭐' });
     setTimeout(() => setShowPoint({ visible: false, student: null, points: 1, behaviorEmoji: '⭐' }), 2000);
-    // Trigger a brief pulse animation on the student card
-    if (selectedStudent && selectedStudent.id) {
-      setAnimatingStudentIds(prev => {
-        const next = new Set(prev);
-        next.add(selectedStudent.id);
-        return next;
-      });
-      setTimeout(() => setAnimatingStudentIds(prev => {
-        const next = new Set(prev);
-        next.delete(selectedStudent.id);
-        return next;
-      }), 800);
-    }
     updateClasses((prev) =>
       prev.map((c) =>
         c.id === activeClass.id
@@ -386,18 +372,6 @@ export default function ClassDashboard({
       prev.map((c) => (c.id === activeClass.id ? { ...c, students: c.students.map((s) => ({ ...s, score: s.score + behavior.pts })) } : c))
     );
     setShowClassBehaviorModal(false);
-    // Pulse all students briefly
-    const ids = (activeClass.students || []).map(s => s.id);
-    setAnimatingStudentIds(prev => {
-      const next = new Set(prev);
-      ids.forEach(id => next.add(id));
-      return next;
-    });
-    setTimeout(() => setAnimatingStudentIds(prev => {
-      const next = new Set(prev);
-      ids.forEach(id => next.delete(id));
-      return next;
-    }), 900);
   };
   // --- SURGICAL ADDITION FOR LUCKY DRAW MULTI-WINNERS ---
   const handleGivePointsToMultiple = (studentsArray, points = 1) => {
@@ -439,18 +413,6 @@ export default function ClassDashboard({
           : c
       )
     );
-    // Pulse winners
-    const ids = (studentsArray || []).map(s => s.id);
-    setAnimatingStudentIds(prev => {
-      const next = new Set(prev);
-      ids.forEach(id => next.add(id));
-      return next;
-    });
-    setTimeout(() => setAnimatingStudentIds(prev => {
-      const next = new Set(prev);
-      ids.forEach(id => next.delete(id));
-      return next;
-    }), 900);
   };
   if (!activeClass) return <div style={styles.layout}>No class selected</div>;
   // Sum up all points from all students safely
@@ -514,7 +476,7 @@ export default function ClassDashboard({
           <SidebarIcon
             icon={Dices}
             label="Lucky Draw"
-            onClick={() => { setViewMode('dashboard'); setIsLuckyDrawOpen(true); }}
+            onClick={() => setIsLuckyDrawOpen(true)}
             style={styles.icon}
           />
 
@@ -528,7 +490,7 @@ export default function ClassDashboard({
           <SidebarIcon
             icon={CheckSquare}
             label="Attendance"
-            onClick={() => { setViewMode('dashboard'); setIsAttendanceMode(!isAttendanceMode); }}
+            onClick={() => setIsAttendanceMode(!isAttendanceMode)}
             isActive={isAttendanceMode}
             style={styles.icon}
           />
@@ -1014,13 +976,7 @@ export default function ClassDashboard({
                             pointerEvents: 'auto'
                           }}
                         >
-                          <StudentCard
-                            student={s}
-                            pulse={animatingStudentIds.has(s.id)}
-                            onClick={() => { if (isAttendanceMode) { const next = new Set(absentStudents); if (next.has(s.id)) next.delete(s.id); else next.add(s.id); setAbsentStudents(next); } else if (!isAbsentToday) { setSelectedStudent(s); } }}
-                            onEdit={handleEditStudent}
-                            onDelete={() => setDeleteConfirmStudentId(s.id)}
-                          />
+                          <StudentCard student={s} onClick={() => { if (isAttendanceMode) { const next = new Set(absentStudents); if (next.has(s.id)) next.delete(s.id); else next.add(s.id); setAbsentStudents(next); } else if (!isAbsentToday) { setSelectedStudent(s); } }} onEdit={handleEditStudent} onDelete={() => setDeleteConfirmStudentId(s.id)} />
                           {selectedStudents.has(s.id) && <div style={{ position: 'absolute', inset: 0, borderRadius: '24px', border: '3px solid #4CAF50', pointerEvents: 'none' }} />}
                           {isAbsentToday && !isAttendanceMode && <div style={{ position: 'absolute', inset: 0, borderRadius: '24px', border: '3px solid #FF9800', background: 'rgba(255, 152, 0, 0.1)', pointerEvents: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '24px', fontWeight: 'bold', color: '#FF9800' }}>ABSENT TODAY</div>}
                         </div>
@@ -1049,13 +1005,13 @@ export default function ClassDashboard({
           <LuckyDrawModal
             students={activeClass.students}
             onClose={() => setIsLuckyDrawOpen(false)}
-            onWinner={(winnerData) => {
-              // If it's an array (2+ students), use our new multi-handler
+            onWinner={(winnerData, points = 1) => {
+              // Ensure the points chosen in the modal are used when awarding
               if (Array.isArray(winnerData)) {
-                handleGivePointsToMultiple(winnerData, 1);
+                handleGivePointsToMultiple(winnerData, points);
               } else {
-                // If it's just one student, use your existing single handler
-                setSelectedStudent(winnerData);
+                // Single winner: award the chosen points as well
+                handleGivePointsToMultiple([winnerData], points);
               }
               setIsLuckyDrawOpen(false);
             }}

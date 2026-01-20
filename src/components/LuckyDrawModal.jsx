@@ -116,7 +116,7 @@ function RollingCard({ rolling, students, finalStudent, count }) {
 
   useEffect(() => {
     let interval;
-    if (rolling) {
+    if (rolling && students && students.length > 0) {
       interval = setInterval(() => {
         setDisplayIndex(Math.floor(Math.random() * students.length));
       }, 80);
@@ -130,15 +130,15 @@ function RollingCard({ rolling, students, finalStudent, count }) {
   const cardWidth = count === 1 ? '100%' : count === 2 ? '45%' : '22%';
 
   return (
-    <div style={{ ...modalStyles.luckyCard, width: cardWidth, minWidth: '200px' }}>
+    <div style={{ ...modalStyles.luckyCard, width: cardWidth, minWidth: '160px' }}>
       <div style={modalStyles.avatarContainer}>
         <img
-          src={current?.avatar}
+          src={current?.avatar || 'https://via.placeholder.com/300/FFD1DC/3A3A3A?text=🙂'}
           style={{
-            width: '100%', height: '100%', borderRadius: '24px', objectFit: 'cover',
-            filter: rolling ? 'blur(2px)' : 'none'
+            width: '100%', height: '100%', borderRadius: '20px', objectFit: 'cover',
+            filter: rolling ? 'blur(1px)' : 'none', transition: 'filter 180ms'
           }}
-          alt="avatar"
+          alt={current?.name || 'student'}
         />
       </div>
       <h3 style={modalStyles.nameLabel}>{current?.name}</h3>
@@ -148,9 +148,9 @@ function RollingCard({ rolling, students, finalStudent, count }) {
 }
 
 const modalStyles = {
-  overlay: { position: 'fixed', inset: 0, background: 'rgba(0, 0, 0, 0.7)', backdropFilter: 'blur(20px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 3000 },
-  glassCard: { background: 'rgba(255, 255, 255, 0.1)', border: '1px solid rgba(255, 255, 255, 0.2)', padding: '40px', borderRadius: '40px', width: '400px', textAlign: 'center', position: 'relative' },
-  drawContainer: { background: 'rgba(20, 20, 20, 0.8)', border: '1px solid rgba(255, 255, 255, 0.1)', padding: '40px 20px', borderRadius: '40px', textAlign: 'center', position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center', overflow: 'hidden' },
+  overlay: { position: 'fixed', inset: 0, background: 'linear-gradient(180deg, rgba(255,243,224,0.85), rgba(255,230,241,0.8))', backdropFilter: 'blur(6px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 3000 },
+  glassCard: { background: 'linear-gradient(135deg, rgba(255,255,255,0.9), rgba(250,250,255,0.75))', border: '1px solid rgba(255,255,255,0.6)', padding: '36px', borderRadius: '28px', width: '400px', textAlign: 'center', position: 'relative', boxShadow: '0 15px 40px rgba(255, 183, 197, 0.18)' },
+  drawContainer: { background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.9), rgba(255, 245, 238, 0.85))', border: '1px solid rgba(255,255,255,0.7)', padding: '28px 18px', borderRadius: '28px', textAlign: 'center', position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center', overflow: 'hidden', boxShadow: '0 20px 60px rgba(255, 193, 197, 0.12)' },
   headerLabel: { color: '#fff', fontSize: '14px', fontWeight: 800, textTransform: 'uppercase', marginBottom: '20px', opacity: 0.6 },
   closeIcon: { position: 'absolute', right: 20, top: 20, cursor: 'pointer', color: '#fff', zIndex: 10 },
   headerIcon: { width: '60px', height: '60px', background: 'rgba(255,255,255,0.1)', borderRadius: '20px', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px' },
@@ -159,8 +159,8 @@ const modalStyles = {
   numberGrid: { display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '10px' },
   numberBtn: { padding: '20px 0', fontSize: '22px', fontWeight: 900, borderRadius: '15px', border: '1px solid rgba(255,255,255,0.2)', background: 'rgba(255,255,255,0.05)', cursor: 'pointer', color: '#fff' },
   cardsWrapper: { display: 'flex', gap: '10px', justifyContent: 'center', width: '100%', marginBottom: '30px', padding: '10px' },
-  luckyCard: { background: 'rgba(255, 255, 255, 0.05)', padding: '20px 10px', borderRadius: '30px', border: '1px solid rgba(255, 255, 255, 0.1)', display: 'flex', flexDirection: 'column', alignItems: 'center' },
-  avatarContainer: { width: '75%', aspectRatio: '1/1', borderRadius: '20px', overflow: 'hidden' },
+  luckyCard: { background: 'linear-gradient(180deg, #fff, #FFF7F0)', padding: '14px 8px', borderRadius: '18px', border: '1px solid rgba(0,0,0,0.04)', display: 'flex', flexDirection: 'column', alignItems: 'center' },
+  avatarContainer: { width: '78%', aspectRatio: '1/1', borderRadius: '12px', overflow: 'hidden', background: '#FFF0F6' },
   nameLabel: { margin: '15px 0 5px 0', fontWeight: 800, color: '#fff', fontSize: '18px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', width: '90%' },
   pointBadge: { background: '#4CAF50', color: '#fff', padding: '2px 10px', borderRadius: '8px', fontSize: '11px', fontWeight: 800 },
   footer: { width: '100%', maxWidth: '350px', marginTop: 'auto' },
