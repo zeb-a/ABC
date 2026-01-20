@@ -302,16 +302,24 @@ if (avatar && avatar.startsWith('data:image')) {
       };
 
       const existing = existingMap.get(behavior.label);
+      // Helper to attempt create/patch and fallback if PocketBase rejects array vs text for 'type'
+      const trySave = async (method, url, bodyPayload) => {
+        try {
+          return await pbRequest(url, { method, body: JSON.stringify(bodyPayload) });
+        } catch (err) {
+          // If server rejects array for 'type' (400), try falling back to a single string value
+          if (err && err.status === 400 && Array.isArray(bodyPayload.type)) {
+            const fallback = { ...bodyPayload, type: bodyPayload.type[0] || '' };
+            return await pbRequest(url, { method, body: JSON.stringify(fallback) });
+          }
+          throw err;
+        }
+      };
+
       if (existing) {
-        results.push(await pbRequest(`/collections/behaviors/records/${existing.id}`, {
-          method: 'PATCH',
-          body: JSON.stringify(payload)
-        }));
+        results.push(await trySave('PATCH', `/collections/behaviors/records/${existing.id}`, payload));
       } else {
-        results.push(await pbRequest('/collections/behaviors/records', {
-          method: 'POST',
-          body: JSON.stringify(payload)
-        }));
+        results.push(await trySave('POST', '/collections/behaviors/records', payload));
       }
     }
     return results;
