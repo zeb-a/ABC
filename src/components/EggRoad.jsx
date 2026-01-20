@@ -1,5 +1,5 @@
 /* eslint-disable no-unused-vars */
-import React, { useMemo } from 'react';
+import React, { useMemo, useEffect } from 'react';
 import { ChevronLeft, Trophy, Star, ArrowUp, Flag } from 'lucide-react';
 import { motion } from 'framer-motion';
 import SafeAvatar from './SafeAvatar';
@@ -27,8 +27,21 @@ export default function EggRoad({ classData, onBack }) {
   const currentLevel = [...levels].reverse().find(l => classTotal >= l.min) || levels[0];
   const progressPercentage = Math.min((classTotal / 2500) * 100, 100);
 
+  // inject a small mobile-friendly stylesheet so EggRoad fits narrow screens
+  useEffect(() => {
+    try {
+      const style = document.createElement('style');
+      style.id = 'eggroad-mobile-styles';
+      style.innerHTML = `@media (max-width:768px){ .eggroad-root { padding: 12px !important; } .eggroad-root .header { padding: 12px !important; } .eggroad-root .avatarGroup { width: 95% !important; } .eggroad-root .topFiveContainer { gap: 8px; overflow-x: auto; padding: 10px; } }`;
+      document.head.appendChild(style);
+      return () => { const el = document.getElementById('eggroad-mobile-styles'); if (el) el.remove(); };
+    } catch (e) {
+      // noop
+    }
+  }, []);
+
   return (
-    <div style={{ ...styles.container, background: currentLevel.color }}>
+    <div className="eggroad-root" style={{ ...styles.container, background: currentLevel.color }}>
       
       {/* HEADER */}
       <div style={styles.header}>
@@ -99,6 +112,8 @@ export default function EggRoad({ classData, onBack }) {
     </div>
   );
 }
+
+
 
 const styles = {
   container: { position: 'fixed', inset: 0, zIndex: 9999, transition: 'background 1s ease', overflow: 'hidden', fontFamily: 'system-ui' },

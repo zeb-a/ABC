@@ -6,6 +6,7 @@ import {
   ChevronLeft, ChevronRight, Sliders, ChevronDown, ArrowUpDown,
   CheckSquare, BarChart2, QrCode, ClipboardList, Maximize, Minimize, MessageSquare, Clock, CheckCircle, Siren, Zap
 } from 'lucide-react';
+
 import ReportsPage from './ReportsPage';
 import StudentCard from './StudentCard';
 import BehaviorModal from './BehaviorModal';
@@ -42,7 +43,7 @@ const SidebarIcon = ({ icon: Icon, label, onClick, isActive, badge, style }) => 
       {hovered && (
         <div style={{
           position: 'absolute',
-          left: '60px', // Pushes it to the right of the sidebar
+          left: '60px',
           top: '50%',
           transform: 'translateY(-50%)',
           background: '#2D3436',
@@ -53,8 +54,7 @@ const SidebarIcon = ({ icon: Icon, label, onClick, isActive, badge, style }) => 
           whiteSpace: 'nowrap',
           fontSize: '14px',
           pointerEvents: 'none',
-          boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
-          zIndex: 2000,
+          boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
         }}>
           {label}
         </div>
@@ -62,7 +62,6 @@ const SidebarIcon = ({ icon: Icon, label, onClick, isActive, badge, style }) => 
     </div>
   );
 };
-
 export default function ClassDashboard({
   activeClass,
   behaviors,
@@ -412,7 +411,7 @@ export default function ClassDashboard({
     );
     setShowClassBehaviorModal(false);
     // Trigger animation for whole class
-    try { triggerAnimationForIds(activeClass.students.map(s => s.id), behavior.pts); } catch (e) {}
+    try { triggerAnimationForIds(activeClass.students.map(s => s.id), behavior.pts); } catch (e) { console.warn('triggerAnimationForIds failed', e); }
   };
   // --- SURGICAL ADDITION FOR LUCKY DRAW MULTI-WINNERS ---
   const handleGivePointsToMultiple = (studentsArray, points = 1) => {
@@ -455,7 +454,7 @@ export default function ClassDashboard({
       )
     );
     // Trigger animation for winners
-    try { triggerAnimationForIds(studentsArray.map(w => w.id), points); } catch (e) {}
+    try { triggerAnimationForIds(studentsArray.map(w => w.id), points); } catch (e) { console.warn('triggerAnimationForIds failed', e); }
   };
   if (!activeClass) return <div style={styles.layout}>No class selected</div>;
   // Sum up all points from all students safely
@@ -549,7 +548,7 @@ export default function ClassDashboard({
           <SidebarIcon
             icon={Dices}
             label="Lucky Draw"
-            onClick={() => setIsLuckyDrawOpen(true)}
+            onClick={() => { setViewMode('dashboard'); setIsLuckyDrawOpen(true); }}
             style={styles.icon}
           />
 
@@ -563,7 +562,16 @@ export default function ClassDashboard({
           <SidebarIcon
             icon={CheckSquare}
             label="Attendance"
-            onClick={() => setIsAttendanceMode(!isAttendanceMode)}
+            onClick={() => {
+              if (!isAttendanceMode) {
+                // Ensure student cards are visible when entering attendance mode
+                setViewMode('dashboard');
+                setIsAttendanceMode(true);
+              } else {
+                // Clicking again exits attendance mode
+                setIsAttendanceMode(false);
+              }
+            }}
             isActive={isAttendanceMode}
             style={styles.icon}
           />
@@ -620,6 +628,17 @@ export default function ClassDashboard({
 
         </nav>
 
+          <style>{`
+            @keyframes chevronBounce {
+              0% { transform: translateY(0); }
+              1.6% { transform: translateY(-8px); }
+              3.2% { transform: translateY(0); }
+              4.8% { transform: translateY(-6px); }
+              6.4% { transform: translateY(0); }
+              100% { transform: translateY(0); }
+            }
+          `}</style>
+
           <button
             onClick={() => setSidebarVisible(!sidebarVisible)}
             style={(() => {
@@ -648,7 +667,7 @@ export default function ClassDashboard({
               return {
                 position: 'fixed',
                 left: sidebarVisible ? '80px' : '0',
-                top: '20px',
+                top: '58px',
                 zIndex: 999,
                 background: 'white',
                 border: 'none',
@@ -660,11 +679,12 @@ export default function ClassDashboard({
                 justifyContent: 'center',
                 cursor: 'pointer',
                 boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-                transition: 'all 0.3s ease'
+                transition: 'all 0.3s ease',
+                willChange: 'transform'
               };
             })()}
           >
-            {sidebarVisible ? <ChevronLeft size={isMobile ? 20 : 22} /> : <ChevronRight size={isMobile ? 20 : 22} />}
+            {sidebarVisible ? <ChevronLeft size={isMobile ? 20 : 22} style={{ transition: 'transform 220ms ease' }} /> : <ChevronRight size={isMobile ? 20 : 22} style={{ transition: 'transform 220ms ease' }} />}
           </button>
 
         {/* BUZZER OVERLAY */}
@@ -834,9 +854,10 @@ export default function ClassDashboard({
                         <InlineHelpButton pageId="class-dashboard" />
                       </div>
                       {isAttendanceMode && (
-                        <span style={{ background: '#FEF3C7', color: '#D97706', padding: '4px 12px', borderRadius: '10px', fontSize: '12px', fontWeight: 800 }}>
-                          ATTENDANCE
-                        </span>
+                        <div style={{ background: '#FEF3C7', color: '#92400E', padding: '8px 12px', borderRadius: '10px', fontSize: '13px', fontWeight: 700, display: 'flex', gap: 12, alignItems: 'center' }}>
+                          <strong style={{ fontSize: '13px' }}>Attendance mode active</strong>
+                          <span style={{ fontWeight: 600, fontSize: '12px', color: '#92400E' }}>Click a student to mark absent; click again to mark present. Click the Attendance icon to exit.</span>
+                        </div>
                       )}
 
                     </div>
@@ -1115,8 +1136,14 @@ export default function ClassDashboard({
                 // Single winner: award the chosen points as well
                 handleGivePointsToMultiple([winnerData], points);
               }
+              try {
+                window.dispatchEvent(new CustomEvent('onboarding:actionComplete', { detail: { stepId: 'lucky-draw' } }));
+              } catch (e) {
+                /* ignore */
+              }
               setIsLuckyDrawOpen(false);
             }}
+            onRequestAddStudents={() => setIsAddStudentOpen(true)}
           />
         )}
 

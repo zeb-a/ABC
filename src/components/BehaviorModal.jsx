@@ -41,7 +41,15 @@ export default function BehaviorModal({ student, behaviors, onClose, onGivePoint
           <div style={styles.section}>
             <div style={styles.buttonGrid} className="behavior-cards-container">
               {(activeTab === 'wow' ? wowCards : nonoCards).map(card => (
-                <button key={card.id} onClick={() => onGivePoint(card)} style={activeTab === 'wow' ? styles.cardButton : { ...styles.cardButton, borderLeft: '4px solid #F44336' }}>
+                <button key={card.id} onClick={() => {
+                  try {
+                    onGivePoint(card);
+                    // Notify onboarding that a behavior was given (if waiting)
+                    window.dispatchEvent(new CustomEvent('onboarding:actionComplete', { detail: { stepId: 'behavior-cards' } }));
+                  } catch (e) {
+                    console.error('onGivePoint failed', e);
+                  }
+                }} style={activeTab === 'wow' ? styles.cardButton : { ...styles.cardButton, borderLeft: '4px solid #F44336' }}>
                   <div style={{fontSize: '2.2rem', marginBottom: '5px'}}>{card.icon}</div>
                   <div style={{fontWeight: 'bold', fontSize: '0.9rem'}}>{card.label}</div>
                   <div style={{color: activeTab === 'wow' ? '#4CAF50' : '#F44336', fontWeight: '900'}}>{activeTab === 'wow' ? `+${card.pts}` : card.pts}</div>

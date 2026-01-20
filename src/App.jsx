@@ -58,18 +58,7 @@ function App() {
   const [behaviors, setBehaviors] = useState(() => JSON.parse(localStorage.getItem('classABC_behaviors')) || INITIAL_BEHAVIORS);
   const [activeClassId, setActiveClassId] = useState(null);
   const [view, setView] = useState('portal'); // 'portal' | 'dashboard' | 'egg' | 'settings' | 'setup'
-  const [showOnboarding, setShowOnboarding] = useState(() => {
-    // Check if user has completed onboarding
-    if (typeof window !== 'undefined') {
-      const stored = localStorage.getItem('classABC_logged_in');
-      if (stored) {
-        const parsedUser = JSON.parse(stored);
-        const hasCompletedOnboarding = localStorage.getItem(`classABC_onboarding_${parsedUser.email}`);
-        return !hasCompletedOnboarding;
-      }
-    }
-    return false;
-  });
+  const [showOnboarding, setShowOnboarding] = useState(false);
 
   // 1. Add state to track if we are in the assignment studio
   const [isAssignmentStudioOpen, setIsAssignmentStudioOpen] = useState(false);
@@ -223,9 +212,7 @@ function App() {
     localStorage.removeItem(`classABC_data_${u.email}`);
     localStorage.removeItem('classABC_behaviors');
     setUser(u);
-    // Check if this is a new user (no onboarding flag set)
-    const hasCompletedOnboarding = localStorage.getItem(`classABC_onboarding_${u.email}`);
-    setShowOnboarding(!hasCompletedOnboarding);
+    // Do not automatically show onboarding here; onboarding appears when the user first opens a class dashboard
   };
 
   const onLogout = () => {
@@ -259,6 +246,16 @@ function App() {
   const onSelectClass = (classId) => {
     setActiveClassId(classId);
     setView('dashboard');
+    // When user first opens the dashboard for the first time, show onboarding if not completed
+    try {
+      const storedUser = user || (localStorage.getItem('classABC_logged_in') ? JSON.parse(localStorage.getItem('classABC_logged_in')) : null);
+      if (storedUser && storedUser.email) {
+        const hasCompleted = localStorage.getItem(`classABC_onboarding_${storedUser.email}`);
+        if (!hasCompleted) setShowOnboarding(true);
+      }
+    } catch (e) {
+      // ignore
+    }
   };
 
   const updateClasses = (updater) => {
@@ -499,7 +496,7 @@ function App() {
             view="dashboard"
             onComplete={() => {
               setShowOnboarding(false);
-              localStorage.setItem(`class123_onboarding_${user.email}`, 'true');
+              localStorage.setItem(`classABC_onboarding_${user.email}`, 'true');
             }}
           />
         )}

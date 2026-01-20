@@ -23,6 +23,7 @@ const ONBOARDING_STEPS = {
       highlightClass: 'add-student-button',
       position: 'bottom',
       content: 'Click "Add Student" to enroll a student. Enter their name and choose a cute avatar!',
+      waitForAction: true,
     },
     {
       id: 'behavior-cards',
@@ -32,6 +33,8 @@ const ONBOARDING_STEPS = {
       highlightClass: 'behavior-cards-container',
       position: 'top',
       content: '🟢 Green cards = positive behaviors (give points)\n🔴 Red cards = behaviors to improve (deduct points)\n\nClick any card to apply it to a student, then click the student card to award/deduct points.',
+      // Wait for the user to actually try a behavior card before advancing
+      waitForAction: true,
     },
     {
       id: 'student-cards',
@@ -59,6 +62,7 @@ const ONBOARDING_STEPS = {
       highlightClass: 'lucky-draw-button',
       position: 'bottom',
       content: 'Click the dice icon to randomly select a student. Great for classroom activities, picking who presents, or choosing line leader!',
+      waitForAction: true,
     },
     {
       id: 'egg-road',
@@ -95,6 +99,24 @@ export default function OnboardingGuide({ view, onComplete }) {
   const [isVisible, setIsVisible] = useState(true);
   const steps = ONBOARDING_STEPS[view] || [];
   const currentStep = steps[currentStepIndex];
+
+  // Listen for external signals that the user completed the action for a step
+  React.useEffect(() => {
+    const handler = (e) => {
+      const payload = e?.detail || {};
+      if (!currentStep || !currentStep.waitForAction) return;
+      // If stepId matches or no stepId provided, advance
+      if (!payload.stepId || payload.stepId === currentStep.id) {
+        // small delay so UI can settle
+        setTimeout(() => {
+          if (currentStepIndex < steps.length - 1) setCurrentStepIndex(s => s + 1);
+          else { setIsVisible(false); onComplete && onComplete(); }
+        }, 300);
+      }
+    };
+    window.addEventListener('onboarding:actionComplete', handler);
+    return () => window.removeEventListener('onboarding:actionComplete', handler);
+  }, [currentStep, currentStepIndex, steps.length, onComplete]);
 
   // Auto-advance when view changes, but only if view actually changed
   const prevViewRef = React.useRef(view);
@@ -344,6 +366,7 @@ export default function OnboardingGuide({ view, onComplete }) {
 
           <button
             onClick={handleNext}
+            disabled={currentStep && currentStep.waitForAction}
             style={{
               padding: '8px 16px',
               border: 'none',
@@ -369,6 +392,9 @@ export default function OnboardingGuide({ view, onComplete }) {
             {currentStepIndex < steps.length - 1 && <ChevronRight size={16} />}
           </button>
         </div>
+        {currentStep && currentStep.waitForAction && (
+          <div style={{ marginTop: 8, fontSize: 13, color: '#666' }}>Waiting for you to complete the step: <strong>{currentStep.title}</strong></div>
+        )}
       </div>
     </>
   );

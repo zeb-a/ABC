@@ -8,11 +8,22 @@ const EMOJI_OPTIONS = ['⭐', '🌟', '✨', '👏', '🎉', '🔥', '💪', '�
 export default function SettingsPage({ activeClass, behaviors, onBack, onUpdateBehaviors }) {
   const [activeTab, setActiveTab] = useState('cards'); // 'cards' | 'students' | 'general'
   const [cards, setCards] = useState(Array.isArray(behaviors) ? behaviors : []);
+  const [, setSidebarCollapsed] = useState(false);
   const [editingCardId, setEditingCardId] = useState(null);
   const [editingCard, setEditingCard] = useState({ label: '', pts: 0, icon: '⭐', type: 'wow' });
   const [isEmojiPickerOpen, setIsEmojiPickerOpen] = useState(false);
 
   React.useEffect(() => setCards(Array.isArray(behaviors) ? behaviors : []), [behaviors]);
+
+  // Auto-collapse sidebar on small screens
+  React.useEffect(() => {
+    const handleResize = () => {
+      setSidebarCollapsed(window.innerWidth < 720);
+    };
+    handleResize();
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   // Helper to reload behaviors from backend with class id
   const reloadBehaviors = async () => {
@@ -24,6 +35,15 @@ export default function SettingsPage({ activeClass, behaviors, onBack, onUpdateB
       console.warn('Failed to reload behaviors:', e.message);
     }
   };
+
+  // Inject mobile-friendly overrides for Settings page
+  React.useEffect(() => {
+    const style = document.createElement('style');
+    style.id = 'settings-mobile-styles';
+    style.innerHTML = `@media (max-width:720px){ .settings-page-root header { padding: 12px 16px !important; } .settings-page-root main { padding: 16px !important; } .settings-page-root aside { display: none !important; } .settings-page-root .sidebar-collapsed { display: flex !important; width: 64px !important; } }`;
+    document.head.appendChild(style);
+    return () => { const el = document.getElementById('settings-mobile-styles'); if (el) el.remove(); };
+  }, []);
 
   // SettingsPage.jsx
 // Optimistic close: close UI immediately, save in background
@@ -65,7 +85,7 @@ const handleBackClick = () => {
   };
 
   return (
-    <div style={styles.pageContainer}>
+    <div className="settings-page-root" style={styles.pageContainer}>
       {/* Top Navigation Bar */}
       <header style={styles.header}>
         <div style={styles.headerLeft} onClick={handleBackClick}>
@@ -79,14 +99,25 @@ const handleBackClick = () => {
 
       <div style={styles.mainLayout}>
         {/* Settings Sidebar */}
-        <aside style={styles.sidebar}>
+        {/* <aside style={{ ...styles.sidebar, width: sidebarCollapsed ? '84px' : styles.sidebar.width }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+              <strong style={{ display: sidebarCollapsed ? 'none' : 'block' }}>{activeClass?.name}</strong>
+            </div>
+            <button onClick={() => setSidebarCollapsed(s => !s)} style={styles.iconBtn} title={sidebarCollapsed ? 'Expand' : 'Collapse'}>
+              {sidebarCollapsed ? <ChevronLeft size={18} /> : <LayoutGrid size={16} />}
+            </button>
+          </div>
           <button 
             onClick={() => setActiveTab('cards')} 
             style={activeTab === 'cards' ? styles.tabActive : styles.tab}
           >
-            <LayoutGrid size={20} /> Behavior Cards
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+              <LayoutGrid size={20} />
+              {!sidebarCollapsed && <span>Behavior Cards</span>}
+            </div>
           </button>
-        </aside>
+        </aside> */}
 
         {/* Dynamic Content Area */}
         <main style={styles.content}>
@@ -96,7 +127,7 @@ const handleBackClick = () => {
                 <h3>Behavior Point Cards</h3>
                 <div style={{ display: 'flex', gap: '10px' }}>
                   <button
-                    style={styles.addBtn}
+                    style={styles.addBtnModern}
                     onClick={() => {
                       const newCard = { id: Date.now(), label: 'New Card', pts: 1, type: 'wow', icon: '⭐' };
                       const updated = [newCard, ...cards];
@@ -106,7 +137,7 @@ const handleBackClick = () => {
                     }}
                   ><Plus size={18}/> Add Card</button>
                   <button
-                    style={{...styles.addBtn, background: '#FF7675'}}
+                    style={{...styles.addBtnModern, background: '#FF7675'}}
                     onClick={async () => {
                       const INITIAL_BEHAVIORS = [
                         { id: 1, label: 'Helped Friend', pts: 1, type: 'wow', icon: '🤝' },
@@ -139,37 +170,26 @@ const handleBackClick = () => {
                       <span style={styles.itemIcon}>{card.icon}</span>
                       <div>
                         {editingCardId === card.id ? (
-                          <div>
-                            <div style={{ marginBottom: 8 }}>
-                              <input 
-                                value={editingCard.label} 
-                                onChange={(e) => setEditingCard(prev => ({ ...prev, label: e.target.value }))} 
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 16, minWidth: 420 }}>
+                            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
+                              <div style={{ width: 64, height: 64, borderRadius: 16, display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#FFF8E1', fontSize: 28 }}>{editingCard.icon}</div>
+                              <button onClick={() => setIsEmojiPickerOpen(s => !s)} style={{ ...styles.iconBtn, padding: '6px 10px', fontSize: 16 }}>Change</button>
+                            </div>
+                            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 10 }}>
+                              <input
+                                value={editingCard.label}
+                                onChange={(e) => setEditingCard(prev => ({ ...prev, label: e.target.value }))}
                                 placeholder="Card label"
-                                style={{ width: '200px' }}
+                                style={{ padding: '12px 14px', borderRadius: 12, border: '1px solid #E6EEF8', fontSize: 16 }}
                               />
-                            </div>
-                            <div style={{ marginBottom: 8, display: 'flex', gap: 8, alignItems: 'center' }}>
-                              <input 
-                                type="number"
-                                value={editingCard.pts} 
-                                onChange={(e) => {
-                                  const pts = Number(e.target.value);
-                                  setEditingCard(prev => ({ ...prev, pts, type: pts > 0 ? 'wow' : 'nono' }));
-                                }}
-                                style={{ width: 80 }}
-                                placeholder="Points"
-                              />
-                              <span style={{ fontSize: '14px', color: editingCard.pts > 0 ? '#4CAF50' : '#F44336' }}>
-                                ({editingCard.pts > 0 ? 'WOW' : 'NONO'})
-                              </span>
-                            </div>
-                            <div style={{ marginBottom: 8 }}>
-                              <button 
-                                onClick={() => setIsEmojiPickerOpen(!isEmojiPickerOpen)}
-                                style={styles.emojiPickerBtn}
-                              >
-                                {editingCard.icon} Pick Emoji
-                              </button>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: '#fff', padding: 6, borderRadius: 12, border: '1px solid #EEF2FF' }}>
+                                  <button onClick={() => { const pts = Number(editingCard.pts) - 1; setEditingCard(prev => ({ ...prev, pts, type: pts > 0 ? 'wow' : 'nono' })); }} style={{ ...styles.iconBtn, padding: '6px 8px' }}>-</button>
+                                  <div style={{ minWidth: 72, textAlign: 'center', fontSize: 18, fontWeight: 800 }}>{editingCard.pts}</div>
+                                  <button onClick={() => { const pts = Number(editingCard.pts) + 1; setEditingCard(prev => ({ ...prev, pts, type: pts > 0 ? 'wow' : 'nono' })); }} style={{ ...styles.iconBtn, padding: '6px 8px' }}>+</button>
+                                </div>
+                                <div style={{ color: editingCard.pts > 0 ? '#16A34A' : '#DC2626', fontWeight: 700 }}>{editingCard.pts > 0 ? 'WOW' : 'NONO'}</div>
+                              </div>
                               {isEmojiPickerOpen && (
                                 <div style={styles.emojiGrid}>
                                   {EMOJI_OPTIONS.map(emoji => (
@@ -181,7 +201,8 @@ const handleBackClick = () => {
                                       }}
                                       style={{
                                         ...styles.emojiBtn,
-                                        background: editingCard.icon === emoji ? '#E8F5E9' : 'transparent'
+                                        background: editingCard.icon === emoji ? '#E8F5E9' : 'transparent',
+                                        fontSize: 20
                                       }}
                                     >
                                       {emoji}
@@ -204,14 +225,14 @@ const handleBackClick = () => {
                     <div style={styles.itemActions}>
                       {editingCardId === card.id ? (
                         <>
-                          <button onClick={() => handleSaveCard(card.id)} style={{ ...styles.addBtn, padding: '6px 10px' }}>Save</button>
-                          <button onClick={() => setEditingCardId(null)} style={{ ...styles.addBtn, padding: '6px 10px', marginLeft: 8 }}>Cancel</button>
-                          <button onClick={() => { handleDeleteCard(card.id); setEditingCardId(null); }} style={{ ...styles.addBtn, padding: '6px 10px', marginLeft: 8, background: '#FF7675' }}>Delete</button>
+                          <button onClick={() => handleSaveCard(card.id)} style={{ ...styles.saveBtn, padding: '10px 16px', marginRight: 8 }}>Save</button>
+                          <button onClick={() => setEditingCardId(null)} style={{ ...styles.cancelBtn, padding: '10px 14px', marginRight: 8 }}>Cancel</button>
+                          <button onClick={() => { handleDeleteCard(card.id); setEditingCardId(null); }} style={{ ...styles.deleteConfirmBtn, padding: '10px 14px' }}>Delete</button>
                         </>
                       ) : (
                         <>
-                          <button onClick={() => { setEditingCardId(card.id); setEditingCard({ label: card.label, pts: card.pts, icon: card.icon, type: card.type }); }} style={styles.actionIcon}>Edit</button>
-                          <button onClick={() => handleDeleteCard(card.id)} style={{ ...styles.actionIcon, color: '#FF7675' }}>Delete</button>
+                          <button onClick={() => { setEditingCardId(card.id); setEditingCard({ label: card.label, pts: card.pts, icon: card.icon, type: card.type }); }} style={{ ...styles.actionIcon, background: 'transparent', border: 'none', cursor: 'pointer' }}>Edit</button>
+                          <button onClick={() => handleDeleteCard(card.id)} style={{ ...styles.actionIcon, color: '#FF7675', background: 'transparent', border: 'none', cursor: 'pointer' }}>Delete</button>
                         </>
                       )}
                     </div>
@@ -238,6 +259,7 @@ const styles = {
   content: { flex: 1, padding: '40px', overflowY: 'auto' },
   sectionHeader: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '30px' },
   addBtn: { background: '#f0f0f0', border: '1px solid #ddd', padding: '8px 16px', borderRadius: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px' },
+  addBtnModern: { background: 'linear-gradient(90deg,#4CAF50,#2E7D32)', color: 'white', border: 'none', padding: '10px 18px', borderRadius: '12px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '10px', boxShadow: '0 10px 30px rgba(46,125,50,0.12)', fontWeight: 800 },
   cardList: { display: 'flex', flexDirection: 'column', gap: '12px' },
   settingItem: { background: '#fff', padding: '16px 24px', borderRadius: '16px', border: '1px solid #E2E8F0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' },
   itemInfo: { display: 'flex', alignItems: 'center', gap: '20px' },
@@ -246,11 +268,12 @@ const styles = {
   miniAvatar: { width: '45px', height: '45px', borderRadius: '50%', background: '#f5f5f5' },
   itemActions: { display: 'flex', gap: '20px' },
   actionIcon: { cursor: 'pointer', color: '#94A3B8' },
-  emojiPickerBtn: { background: '#f0f0f0', border: '1px solid #ddd', padding: '8px 16px', borderRadius: '8px', cursor: 'pointer', fontSize: '16px' },
-  emojiGrid: { display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '8px', marginTop: 8, padding: '12px', background: '#f9f9f9', borderRadius: '8px' },
-  emojiBtn: { fontSize: '24px', border: '1px solid #ddd', borderRadius: '8px', padding: '8px', cursor: 'pointer', background: 'transparent' },
+  emojiPickerBtn: { background: '#fff', border: '1px solid #E6EEF8', padding: '8px 12px', borderRadius: '10px', cursor: 'pointer', fontSize: '14px' },
+  emojiGrid: { display: 'grid', gridTemplateColumns: 'repeat(8, 1fr)', gap: '6px', marginTop: 8, padding: '10px', background: 'rgba(255,255,255,0.9)', borderRadius: '12px', boxShadow: '0 8px 30px rgba(2,6,23,0.08)' },
+  emojiBtn: { fontSize: '20px', border: 'none', borderRadius: '8px', padding: '8px', cursor: 'pointer', background: 'transparent' },
   hoverIcons: { position: 'absolute', top: 12, right: 12, display: 'flex', gap: 8 },
-  iconBtn: { background: 'white', border: '1px solid #ddd', borderRadius: 8, padding: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#4CAF50', transition: 'all 0.2s ease', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' },
+  // small circular icon button used in the modern controls
+  iconBtn: { background: 'white', border: '1px solid #EEF2FF', borderRadius: 8, padding: '6px 8px', cursor: 'pointer', color: '#2563EB', fontWeight: 700 },
   editOverlay: { position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 2000 },
   editModal: { background: 'white', padding: '30px', borderRadius: '24px', width: '450px', boxShadow: '0 20px 60px rgba(0,0,0,0.3)' },
   editModalHeader: { display: 'flex', justifyContent: 'space-between', marginBottom: '20px', alignItems: 'center' },

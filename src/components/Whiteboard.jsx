@@ -28,16 +28,19 @@ export default function Whiteboard({ onClose }) {
     
     const setup = () => {
       const dpr = window.devicePixelRatio || 1;
+      // subtract header height so canvas fits below the top nav
+      const headerHeight = document.querySelector('.topNav')?.getBoundingClientRect().height || 80;
+      const availH = Math.max(200, window.innerHeight - headerHeight);
       canvas.width = window.innerWidth * dpr;
-      canvas.height = window.innerHeight * dpr;
+      canvas.height = availH * dpr;
       canvas.style.width = `${window.innerWidth}px`;
-      canvas.style.height = `${window.innerHeight}px`;
-      
+      canvas.style.height = `${availH}px`;
+
       ctx.scale(dpr, dpr);
       ctx.lineCap = 'round';
       ctx.lineJoin = 'round';
       ctx.fillStyle = "white";
-      ctx.fillRect(0, 0, window.innerWidth, window.innerHeight);
+      ctx.fillRect(0, 0, window.innerWidth, availH);
       contextRef.current = ctx;
     };
 
@@ -130,9 +133,9 @@ export default function Whiteboard({ onClose }) {
   };
 
   return (
-    <div style={styles.container}>
+    <div className="whiteboard-root" style={styles.container}>
       {/* 2026 HEADER */}
-      <div style={styles.topNav}>
+      <div className="topNav" style={styles.topNav}>
         <div style={styles.logoGroup}>
           <div style={styles.iconCircle}><Palette size={20} color="white" /></div>
           <span style={styles.boardTitle}>Classroom Creative Board</span>

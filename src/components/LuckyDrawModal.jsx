@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { X, Users, Star, Check } from 'lucide-react';
 
-export default function LuckyDrawModal({ students, onClose, onWinner }) {
+export default function LuckyDrawModal({ students, onClose, onWinner, onRequestAddStudents }) {
   const safeStudents = useMemo(() => Array.isArray(students) ? students : [], [students]);
   const [step, setStep] = useState('count_selection');
   const [studentCount, setStudentCount] = useState(1);
@@ -13,6 +13,20 @@ export default function LuckyDrawModal({ students, onClose, onWinner }) {
   audioRef.current.loop = true;
 
   const handleStartDraw = (count) => {
+    // Validate students first
+    if (!safeStudents || safeStudents.length < 2) {
+      // Show a short message and offer to add students
+      setStep('needs_students');
+      return;
+    }
+
+    if (count > safeStudents.length) {
+      // If user selected more winners than available, show a friendly message
+      setStep('too_many_selected');
+      setStudentCount(count);
+      return;
+    }
+
     setStudentCount(count);
     // Shuffle and pick unique students (No duplicates)
     const shuffled = [...safeStudents].sort(() => Math.random() - 0.5);
@@ -23,12 +37,12 @@ export default function LuckyDrawModal({ students, onClose, onWinner }) {
     setRolling(true);
 
     audioRef.current.play().catch(() => { });
-
+    // Smooth slowing animation handled inside RollingCard via requestAnimationFrame
     setTimeout(() => {
       setRolling(false);
       audioRef.current.pause();
       audioRef.current.currentTime = 0;
-    }, 2500);
+    }, 3000);
   };
 
 
@@ -46,6 +60,28 @@ export default function LuckyDrawModal({ students, onClose, onWinner }) {
                 {num}
               </button>
             ))}
+          </div>
+        </div>
+      ) : step === 'needs_students' ? (
+        <div style={modalStyles.glassCard}>
+          <X onClick={onClose} style={modalStyles.closeIcon} />
+          <div style={modalStyles.headerIcon}><Users size={32} color="#fff" /></div>
+          <h2 style={modalStyles.title}>Not enough students</h2>
+          <p style={modalStyles.subtitle}>Add at least 2 students before running a Lucky Draw.</p>
+          <div style={{ display: 'flex', gap: 12, justifyContent: 'center' }}>
+            <button onClick={() => { onClose(); onRequestAddStudents && onRequestAddStudents(); }} style={modalStyles.saveBtn}>Add Students</button>
+            <button onClick={onClose} style={{ ...modalStyles.numberBtn, padding: '12px 20px' }}>Cancel</button>
+          </div>
+        </div>
+      ) : step === 'too_many_selected' ? (
+        <div style={modalStyles.glassCard}>
+          <X onClick={onClose} style={modalStyles.closeIcon} />
+          <div style={modalStyles.headerIcon}><Users size={32} color="#fff" /></div>
+          <h2 style={modalStyles.title}>Not enough students</h2>
+          <p style={modalStyles.subtitle}>You chose {studentCount} winners but there are only {safeStudents.length} students.</p>
+          <div style={{ display: 'flex', gap: 12, justifyContent: 'center' }}>
+            <button onClick={() => setStep('count_selection')} style={modalStyles.saveBtn}>Choose a smaller number</button>
+            <button onClick={() => { onClose(); onRequestAddStudents && onRequestAddStudents(); }} style={{ ...modalStyles.numberBtn, padding: '12px 20px' }}>Add Students</button>
           </div>
         </div>
       ) : (
@@ -114,13 +150,31 @@ function RollingCard({ rolling, students, finalStudent, count }) {
   const [displayIndex, setDisplayIndex] = useState(0);
 
   useEffect(() => {
-    let interval;
-    if (rolling) {
-      interval = setInterval(() => {
-        setDisplayIndex(Math.floor(Math.random() * students.length));
-      }, 80);
-    }
-    return () => clearInterval(interval);
+    if (!rolling) return;
+    let raf = null;
+    let lastChange = 0;
+    const start = performance.now();
+
+    const loop = (now) => {
+      const elapsed = now - start;
+      const duration = 3000; // total roll time in ms (match parent timeout)
+      const t = Math.min(1, elapsed / duration);
+      // ease out cubic so speed slows toward the end
+      const eased = 1 - Math.pow(1 - t, 3);
+      // frequency goes from high (fast) to low (slow)
+      const fps = Math.round(40 - eased * 36); // from ~40fps down to ~4fps
+      const interval = 1000 / Math.max(4, fps);
+
+      if (now - lastChange >= interval) {
+        setDisplayIndex(Math.floor(Math.random() * Math.max(1, students.length)));
+        lastChange = now;
+      }
+
+      if (t < 1) raf = requestAnimationFrame(loop);
+    };
+
+    raf = requestAnimationFrame(loop);
+    return () => raf && cancelAnimationFrame(raf);
   }, [rolling, students]);
 
   const current = rolling ? students[displayIndex] : finalStudent;

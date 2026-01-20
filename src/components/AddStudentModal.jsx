@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { boringAvatar, fallbackInitialsDataUrl, AVATAR_OPTIONS, avatarByCharacter } from '../utils/avatar';
 import { X, Camera, ChevronDown } from 'lucide-react';
 import SafeAvatar from './SafeAvatar';
@@ -10,6 +10,34 @@ export default function AddStudentModal({ onClose, onSave }) {
   const [selectedCharacter, setSelectedCharacter] = useState(null);
   const [showAvatarPicker, setShowAvatarPicker] = useState(false);
   const [hoveredChar, setHoveredChar] = useState(null);
+  const fileInputRef = useRef(null);
+
+  // Inline modern file upload control
+  function FileUpload({ value, onChange, compact }) {
+    const [dragOver, setDragOver] = useState(false);
+
+    const handleFiles = (file) => {
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = () => onChange(reader.result);
+      reader.readAsDataURL(file);
+    };
+
+    return (
+      <div
+        onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
+        onDragLeave={() => setDragOver(false)}
+        onDrop={(e) => { e.preventDefault(); setDragOver(false); const f = e.dataTransfer.files && e.dataTransfer.files[0]; handleFiles(f); }}
+        style={{ display: 'flex', gap: 8, alignItems: 'center', justifyContent: 'center' }}
+      >
+        <input ref={fileInputRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={(e) => { const f = e.target.files && e.target.files[0]; handleFiles(f); }} />
+        <button onClick={() => fileInputRef.current && fileInputRef.current.click()} style={{ ...styles.saveBtn, padding: '10px 14px', width: 'auto' }}>
+          {value ? 'Change Photo' : 'Upload Photo'}
+        </button>
+        {value && <button onClick={() => onChange(null)} style={{ ...styles.cancelBtn, padding: '8px 12px', width: 'auto' }}>Remove</button>}
+      </div>
+    );
+  }
 
   // Use selected character if available, otherwise generate from name
   const avatarUrl = uploadedAvatar || (selectedCharacter ? avatarByCharacter(selectedCharacter) : (name ? boringAvatar(name, gender) : fallbackInitialsDataUrl(gender === 'boy' ? 'B' : 'G')));
@@ -25,14 +53,8 @@ export default function AddStudentModal({ onClose, onSave }) {
         <div style={{ ...styles.avatarSection, overflow: 'visible' }}>
           <div style={styles.previewContainer}>
             <img src={avatarUrl} alt="Preview" style={styles.previewImg} onError={(e) => { e.target.onerror = null; e.target.src = fallbackInitialsDataUrl(name); }} />
-            <div style={{ marginTop: 12 }}>
-              <input type="file" accept="image/*" onChange={(e) => {
-                const file = e.target.files && e.target.files[0];
-                if (!file) return;
-                const reader = new FileReader();
-                reader.onload = () => setUploadedAvatar(reader.result);
-                reader.readAsDataURL(file);
-              }} />
+            <div style={{ marginTop: 12, width: '100%' }}>
+              <FileUpload compact value={uploadedAvatar} onChange={(dataUrl) => { setUploadedAvatar(dataUrl); setSelectedCharacter(null); }} />
             </div>
             <div style={styles.cameraBadge}><Camera size={14} /></div>
           </div>
@@ -113,7 +135,15 @@ export default function AddStudentModal({ onClose, onSave }) {
         <div style={styles.footer}>
           {/* CANCEL BUTTON */}
           <button style={styles.cancelBtn} onClick={onClose}>Cancel</button>
-          <button style={styles.saveBtn} onClick={() => onSave({ name, gender, avatar: avatarUrl })}>Add Student</button>
+          <button style={styles.saveBtn} onClick={() => {
+            try {
+              onSave({ name, gender, avatar: avatarUrl });
+              // Notify onboarding guide (if waiting) that add-student completed
+              window.dispatchEvent(new CustomEvent('onboarding:actionComplete', { detail: { stepId: 'add-student' } }));
+            } catch (e) {
+              console.error('Add student failed', e);
+            }
+          }}>Add Student</button>
         </div>
       </div>
     </div>
