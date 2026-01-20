@@ -30,6 +30,10 @@ async function pbRequest(path, opts = {}) {
   const res = await fetch(url, opts);
   const data = await res.json().catch(() => ({}));
   if (!res.ok) {
+    // Log helpful debug info so we can see PocketBase validation errors in the browser console
+    try {
+      console.error('[API] Request failed:', { url, status: res.status, requestBody: opts.body, responseBody: data });
+    } catch (e) { /* ignore logging errors */ }
     const err = new Error(data.message || `request-failed:${res.status}`);
     err.status = res.status;
     err.body = data;
@@ -158,14 +162,15 @@ async getStudentByParentCode(code) {
       body: JSON.stringify({ identity: email, password })
     });
 
-    // For now, allow login regardless of verification status
-    // PocketBase uses 'verified' field, not 'emailVerified'
-    // if (!auth.record?.verified) {
-    //   const err = new Error('Email not verified');
-    //   err.status = 403;
-    //   err.body = { message: 'Please verify your email first.' };
-    //   throw err;
-    // }
+    // Enforce email verification: prevent teacher (and other) logins
+    // if the account hasn't been verified via email.
+    // PocketBase provides a boolean `verified` on the auth record.
+    if (!auth.record?.verified) {
+      const err = new Error('Please verify your email before logging in. Check your inbox for the verification link.');
+      err.status = 403;
+      err.body = { message: 'Email not verified' };
+      throw err;
+    }
 
     if (auth.token) {
       localStorage.setItem('classABC_pb_token', auth.token);
@@ -287,16 +292,15 @@ if (avatar && avatar.startsWith('data:image')) {
     const results = [];
 
     for (const behavior of behaviors) {
-      // FIX: Since your field is "Select Multiple", PocketBase REQUIRES an array.
-      // We ensure it is sent as ['wow'] or ['nono']
-      const behaviorTypeArray = Array.isArray(behavior.type) 
-        ? behavior.type 
-        : [behavior.type || 'wow'];
-      
+      // PocketBase schema on the server expects 'type' as a single text value in
+      // many deployments. To be tolerant across schemas, send the first value
+      // when an array is provided. Also ensure pts is a number.
+      const behaviorType = Array.isArray(behavior.type) ? (behavior.type[0] || '') : (behavior.type || 'wow');
+
       const payload = {
         label: behavior.label,
-        pts: behavior.pts,
-        type: behaviorTypeArray, // Sending as Array
+        pts: Number(behavior.pts) || 0,
+        type: behaviorType,
         icon: behavior.icon,
         class: classId
       };
