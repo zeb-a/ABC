@@ -46,6 +46,15 @@ export default function Whiteboard({ onClose }) {
     return () => window.removeEventListener('resize', setup);
   }, []);
 
+  // Inject compact mobile styles for the whiteboard container
+  useEffect(() => {
+    const style = document.createElement('style');
+    style.id = 'wb-mobile-styles';
+    style.innerHTML = `@media (max-width:768px){ .whiteboard-root { padding: 12px !important; } .whiteboard-root .topNav { height: 64px !important; padding: 8px 12px !important; } .whiteboard-root .sidebar { display:none !important; } }`;
+    document.head.appendChild(style);
+    return () => { const el = document.getElementById('wb-mobile-styles'); if (el) el.remove(); };
+  }, []);
+
   // TEXT BAKING LOGIC
   const finalizeText = useCallback(() => {
     if (!textInput.visible || !textInput.value.trim()) {
@@ -275,6 +284,11 @@ const styles = {
   sizeItem: { background: '#F8FAFC', border: 'none', padding: '12px 0', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px', borderRadius: '12px', transition: '0.2s' },
   trashBtn: { color: '#EF4444', background: 'none', border: 'none', cursor: 'pointer', padding: '10px' },
   canvasContainer: { flex: 1, padding: '30px', position: 'relative' },
+
+  // Mobile adjustments
+  '@mobileOverrides': {
+    canvasContainer: { padding: '12px' }
+  },
   canvas: { background: 'white', borderRadius: '30px', boxShadow: '0 10px 60px rgba(0,0,0,0.05)', display: 'block' },
   liveInput: { position: 'absolute', background: 'transparent', border: 'none', outline: 'none', fontSize: '32px', fontWeight: '900', minWidth: '400px', borderBottom: '2px solid #6366f1', padding: '5px' }
 };

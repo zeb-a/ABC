@@ -123,7 +123,18 @@ const StudentPortal = ({ onBack, classes = [], refreshClasses }) => {
   }
 
   return (
-    <div style={{ background: '#F8FAFC', minHeight: '100vh', fontFamily: "'Inter', sans-serif" }}>
+    <div className="student-portal" style={{ background: '#F8FAFC', minHeight: '100vh', fontFamily: "'Inter', sans-serif" }}>
+      <style>{`
+        .student-portal .topBar { padding: 12px 16px !important; }
+        .student-portal h2 { font-size: 18px !important; }
+        .student-portal .StatCard { padding: 12px !important; }
+        @media (max-width: 768px) {
+          .student-portal { padding-bottom: 80px; }
+          .student-portal .topBar { flex-direction: column; gap: 8px; align-items: flex-start; }
+          .student-portal .scrollArea { padding: 12px !important; }
+          .student-portal .workstation { padding: 12px !important; }
+        }
+      `}</style>
       
       {/* --- MODERN HIDE MODAL --- */}
       {deleteTarget && (

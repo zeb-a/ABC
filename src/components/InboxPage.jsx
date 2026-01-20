@@ -20,8 +20,19 @@ const InboxPage = ({ submissions, onGradeSubmit, onBack }) => {
   };
 
   return (
-    
-    <div style={pageStyles.container}>
+    <div className="inbox-page" style={pageStyles.container}>
+      <style>{`
+        .inbox-page .sidebar { width: 160px !important; }
+        .inbox-page .workHeader { padding: 12px !important; }
+        .inbox-page .badge { font-size: 11px !important; padding: 6px 10px !important; }
+        @media (max-width: 768px) {
+          .inbox-page { padding: 12px !important; }
+          .inbox-page .sidebar { display: none !important; }
+          .inbox-page .main { padding: 12px !important; }
+          .inbox-page .workstation { padding: 16px !important; }
+          .inbox-page .closeBtn button { width: 40px; height: 40px; }
+        }
+      `}</style>
       
       {/* MAIN GRADING AREA */}
       <div style={pageStyles.main}>

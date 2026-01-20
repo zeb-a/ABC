@@ -48,11 +48,14 @@ const StudentCard = ({ student, onClick, onEdit, onDelete, animating = false, an
           position: 'relative',
           aspectRatio: '1 / 1'
         }}
-      onMouseEnter={(e) => {
+      onPointerEnter={(e) => {
+        // Ignore touch pointers to avoid accidental scaling on mobile
+        if (e.pointerType === 'touch') return;
         setIsHovered(true);
         e.currentTarget.style.transform = 'scale(1.05)';
       }}
-      onMouseLeave={(e) => {
+      onPointerLeave={(e) => {
+        if (e.pointerType === 'touch') return;
         setIsHovered(false);
         e.currentTarget.style.transform = 'scale(1)';
       }}

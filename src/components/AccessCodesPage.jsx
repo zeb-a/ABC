@@ -5,7 +5,19 @@ import InlineHelpButton from './InlineHelpButton';
 
 const AccessCodesPage = ({ activeClass, onBack }) => {
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', background: '#FFFFFF', padding: '40px', minHeight: '100vh', overflowY: 'auto' }}>
+    <div className="accesscodes-page" style={{ display: 'flex', flexDirection: 'column', background: '#FFFFFF', padding: '40px', minHeight: '100vh', overflowY: 'auto' }}>
+      <style>{`
+        .accesscodes-page table { width: 100%; }
+        @media (max-width:768px) {
+          .accesscodes-page { padding: 12px !important; }
+          .accesscodes-page table, .accesscodes-page thead, .accesscodes-page tbody, .accesscodes-page th, .accesscodes-page td, .accesscodes-page tr { display: block; width: 100%; }
+          .accesscodes-page thead tr { display: none; }
+          .accesscodes-page tr { margin-bottom: 12px; border-bottom: 1px solid #F1F5F9; padding-bottom: 12px; }
+          .accesscodes-page td { padding: 6px 0 !important; }
+          .accesscodes-page td div { display: flex; flex-direction: column; gap: 8px; }
+          .accesscodes-page .closeBtn { padding: 8px !important; width: 44px; height: 44px; }
+        }
+      `}</style>
       <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '30px', flexShrink: 0 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           <h1 style={{ margin: 0, fontSize: '1.8rem', fontWeight: '800', color: '#2D3436' }}>Student Access Codes</h1>

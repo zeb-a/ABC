@@ -554,15 +554,7 @@ function App() {
       <TeacherPortal classes={classes} onSelectClass={onSelectClass} onAddClass={onAddClass} onLogout={onLogout} />
 
       {/* Onboarding Guide only (no floating help icon) */}
-      {showOnboarding && user && (
-        <OnboardingGuide
-          view="portal"
-          onComplete={() => {
-            setShowOnboarding(false);
-            localStorage.setItem(`class123_onboarding_${user.email}`, 'true');
-          }}
-        />
-      )}
+      {/* OnboardingGuide intentionally rendered only once (dashboard/portal handled earlier) */}
     </>
   );
 }

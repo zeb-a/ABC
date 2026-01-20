@@ -82,7 +82,8 @@ export default function ClassDashboard({
   const [showEditAvatarPicker, setShowEditAvatarPicker] = useState(false);
   const [hoveredEditChar, setHoveredEditChar] = useState(null);
   const [deleteConfirmStudentId, setDeleteConfirmStudentId] = useState(null);
-  const [sidebarVisible, setSidebarVisible] = useState(true);
+  const [sidebarVisible, setSidebarVisible] = useState(false);
+  const [isMobile, setIsMobile] = useState(typeof window !== 'undefined' ? window.innerWidth <= 768 : false);
   const [displaySize, setDisplaySize] = useState('big');
   const [selectedStudents, setSelectedStudents] = useState(new Set());
   const [showClassBehaviorModal, setShowClassBehaviorModal] = useState(false);
@@ -90,6 +91,14 @@ export default function ClassDashboard({
   const [animatingStudents, setAnimatingStudents] = useState({});
 
   const prefersReducedMotion = typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  // Keep track of viewport width to switch sidebar to a compact tab bar on small screens
+  useEffect(() => {
+    const onResize = () => setIsMobile(window.innerWidth <= 768);
+    onResize();
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
+  }, []);
 
   const triggerAnimationForIds = (ids = [], points = 1) => {
     if (prefersReducedMotion) return;
@@ -456,19 +465,49 @@ export default function ClassDashboard({
   return (
     <>
       <div style={styles.layout}>
+        <style>{`
+          @keyframes pulseChevron { 
+            0% { transform: translateY(0) scale(1); }
+            50% { transform: translateY(-4px) scale(1.08); }
+            100% { transform: translateY(0) scale(1); }
+          }
+        `}</style>
         {/* --- SIDEBAR --- */}
         <nav
-          style={{
-            ...styles.sidebar,
-            position: 'fixed',
-            left: 0,
-            top: 0,
-            height: '100vh',
-            zIndex: 1000,
-            transform: sidebarVisible ? 'translateX(0)' : 'translateX(-100%)',
-            transition: 'transform 0.3s ease',
-            boxShadow: sidebarVisible ? '0 0 20px rgba(0,0,0,0.1)' : 'none'
-          }}
+          style={(() => {
+            if (isMobile) {
+              return {
+                // Compact bottom tab bar on small screens
+                position: 'fixed',
+                left: 0,
+                right: 0,
+                bottom: 0,
+                top: 'auto',
+                height: '64px',
+                zIndex: 1000,
+                display: 'flex',
+                flexDirection: 'row',
+                justifyContent: 'space-around',
+                alignItems: 'center',
+                padding: '8px 12px',
+                background: '#fff',
+                transform: sidebarVisible ? 'translateY(0)' : 'translateY(100%)',
+                transition: 'transform 0.25s ease',
+                boxShadow: sidebarVisible ? '0 -10px 30px rgba(0,0,0,0.06)' : 'none'
+              };
+            }
+            return {
+              ...styles.sidebar,
+              position: 'fixed',
+              left: 0,
+              top: 0,
+              height: '100vh',
+              zIndex: 1000,
+              transform: sidebarVisible ? 'translateX(0)' : 'translateX(-100%)',
+              transition: 'transform 0.3s ease',
+              boxShadow: sidebarVisible ? '0 0 20px rgba(0,0,0,0.1)' : 'none'
+            };
+          })()}
         >
           {/* User Initial Circle */}
 
@@ -581,30 +620,52 @@ export default function ClassDashboard({
 
         </nav>
 
-        {viewMode !== 'messages' && (
           <button
             onClick={() => setSidebarVisible(!sidebarVisible)}
-            style={{
-              position: 'fixed',
-              left: sidebarVisible ? '80px' : '0',
-              top: '20px',
-              zIndex: 999,
-              background: 'white',
-              border: 'none',
-              borderRadius: '0 8px 8px 0',
-              width: '28px',
-              height: '40px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              cursor: 'pointer',
-              boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-              transition: 'all 0.3s ease'
-            }}
+            style={(() => {
+              if (isMobile) {
+                // Floating toggle above the bottom tab bar on mobile
+                return {
+                  position: 'fixed',
+                  right: 12,
+                  bottom: sidebarVisible ? '74px' : '12px',
+                  zIndex: 1100,
+                  background: 'white',
+                  border: 'none',
+                  borderRadius: 12,
+                  width: '48px',
+                  height: '48px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  cursor: 'pointer',
+                  boxShadow: '0 8px 22px rgba(0,0,0,0.14)',
+                  transition: 'all 0.25s ease',
+                  // Subtle pulse when sidebar is hidden to hint at its presence
+                  animation: !sidebarVisible ? 'pulseChevron 1.6s ease-in-out infinite' : 'none'
+                };
+              }
+              return {
+                position: 'fixed',
+                left: sidebarVisible ? '80px' : '0',
+                top: '20px',
+                zIndex: 999,
+                background: 'white',
+                border: 'none',
+                borderRadius: '0 8px 8px 0',
+                width: '40px',
+                height: '48px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                cursor: 'pointer',
+                boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+                transition: 'all 0.3s ease'
+              };
+            })()}
           >
-            {sidebarVisible ? <ChevronLeft size={19} /> : <ChevronRight size={16} />}
+            {sidebarVisible ? <ChevronLeft size={isMobile ? 20 : 22} /> : <ChevronRight size={isMobile ? 20 : 22} />}
           </button>
-        )}
 
         {/* BUZZER OVERLAY */}
         {buzzerState !== 'idle' && (
@@ -667,7 +728,7 @@ export default function ClassDashboard({
 
           </div>
         )}
-        <main style={{ ...styles.content, marginLeft: sidebarVisible ? '80px' : '0', transition: 'margin-left 0.3s ease' }}>
+        <main style={{ ...styles.content, marginLeft: (!isMobile && sidebarVisible) ? '80px' : '0', transition: 'margin-left 0.3s ease', paddingBottom: isMobile ? '96px' : undefined }}>
 
           {/* 1. MESSAGES VIEW */}
           {viewMode === 'messages' ? (

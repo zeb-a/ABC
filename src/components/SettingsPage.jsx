@@ -26,13 +26,18 @@ export default function SettingsPage({ activeClass, behaviors, onBack, onUpdateB
   };
 
   // SettingsPage.jsx
-// Find handleBackClick in SettingsPage.jsx and replace it with this:
-const handleBackClick = async () => {
+// Optimistic close: close UI immediately, save in background
+const handleBackClick = () => {
   try {
-    await api.saveBehaviors(activeClass.id, cards);
+    // Close the settings UI immediately for a snappy experience
     onBack();
+    // Persist changes in the background. Log failures but do not block UI.
+    api.saveBehaviors(activeClass?.id, cards).catch(err => {
+      console.error('Failed to persist behavior cards (background):', err);
+    });
   } catch (err) {
-    console.error("Failed to persist behavior cards:", err);
+    console.error('Error closing settings:', err);
+    onBack();
   }
 };
   const handleSaveCard = (id) => {
