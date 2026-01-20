@@ -177,31 +177,43 @@ function App() {
   // persist behaviors and classes per user (localStorage + backend when available)
   // eslint-disable-next-line react-hooks/rules-of-hooks
   useEffect(() => {
+    // Always persist behaviors to localStorage for offline fallback
     localStorage.setItem('classABC_behaviors', JSON.stringify(behaviors));
+  }, [behaviors]);
+
+  // Save behaviors to backend when an active class is selected
+  useEffect(() => {
     const token = localStorage.getItem('classABC_pb_token') || localStorage.getItem('classABC_token');
+    if (!user || !token || !activeClassId) return;
 
-    if (user && token && (behaviors.length > 0 || classes.length > 0) && activeClassId) {
-      // Debounce saves to avoid duplicate records
-      if (saveTimeoutRef.current) {
-        clearTimeout(saveTimeoutRef.current);
+    if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
+    saveTimeoutRef.current = setTimeout(async () => {
+      try {
+        await api.saveBehaviors(activeClassId, behaviors);
+      } catch (e) {
+        console.error('Save behaviors failed:', e.message);
       }
+    }, 800);
 
-      saveTimeoutRef.current = setTimeout(async () => {
-        try {
-          await api.saveBehaviors(activeClassId, behaviors);
-          await api.saveClasses(user.email, classes, behaviors);
-        } catch (e) {
-          console.error('Save failed:', e.message);
-        }
-      }, 1000); // Wait 1 second before saving
+    return () => { if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current); };
+  }, [behaviors, user, activeClassId]);
 
-      return () => {
-        if (saveTimeoutRef.current) {
-          clearTimeout(saveTimeoutRef.current);
-        }
-      };
-    }
-  }, [behaviors, classes, user]);
+  // Save classes to backend whenever classes change (no activeClassId required)
+  useEffect(() => {
+    const token = localStorage.getItem('classABC_pb_token') || localStorage.getItem('classABC_token');
+    if (!user || !token) return;
+
+    if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
+    saveTimeoutRef.current = setTimeout(async () => {
+      try {
+        await api.saveClasses(user.email, classes, behaviors);
+      } catch (e) {
+        console.error('Save classes failed:', e.message);
+      }
+    }, 1000);
+
+    return () => { if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current); };
+  }, [classes, user]);
 
   const onLoginSuccess = (u) => {
     api.setToken(u.token);
