@@ -27,10 +27,11 @@ export default function SettingsPage({ activeClass, behaviors, onBack, onUpdateB
 
   // SettingsPage.jsx
 // Find handleBackClick in SettingsPage.jsx and replace it with this:
-const handleBackClick = async () => {
+const handleBackClick = () => {
+  // Close immediately for snappy UI, persist in background
   try {
-    await api.saveBehaviors(activeClass.id, cards);
     onBack();
+    api.saveBehaviors(activeClass.id, cards).catch(err => console.error("Failed to persist behavior cards:", err));
   } catch (err) {
     console.error("Failed to persist behavior cards:", err);
   }
