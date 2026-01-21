@@ -31,7 +31,7 @@ const SidebarIcon = ({ icon: Icon, label, onClick, isActive, badge, style }) => 
 
   return (
     <div
-      style={{ position: 'relative', display: 'flex', justifyContent: 'center', width: '100%' }}
+      style={{ position: 'relative', display: 'flex', justifyContent: 'center', width: '100%', padding: '10px 0', boxSizing: 'border-box' }}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
     >
@@ -43,7 +43,7 @@ const SidebarIcon = ({ icon: Icon, label, onClick, isActive, badge, style }) => 
       {hovered && (
         <div style={{
           position: 'absolute',
-          left: '60px',
+          left: '72px',
           top: '50%',
           transform: 'translateY(-50%)',
           background: '#2D3436',
@@ -81,9 +81,11 @@ export default function ClassDashboard({
   const [showEditAvatarPicker, setShowEditAvatarPicker] = useState(false);
   const [hoveredEditChar, setHoveredEditChar] = useState(null);
   const [deleteConfirmStudentId, setDeleteConfirmStudentId] = useState(null);
-  const [sidebarVisible, setSidebarVisible] = useState(false);
+  // TEMPORARY: default to visible so we can verify the aside and chevron are rendered.
+  // Change this back to `false` after verifying in the browser.
+  const [sidebarVisible, setSidebarVisible] = useState(true);
   const [isMobile, setIsMobile] = useState(typeof window !== 'undefined' ? window.innerWidth <= 768 : false);
-  const [displaySize, setDisplaySize] = useState('big');
+  const [displaySize, setDisplaySize] = useState(typeof window !== 'undefined' && window.innerWidth <= 768 ? 'compact' : 'spacious');
   const [selectedStudents, setSelectedStudents] = useState(new Set());
   const [showClassBehaviorModal, setShowClassBehaviorModal] = useState(false);
   // Animations for awarded students: id -> { type }
@@ -142,7 +144,13 @@ export default function ClassDashboard({
   };
   // ... existing states ...
   const [showSortMenu, setShowSortMenu] = useState(false); // ⚡ NEW: Toggle for sort menu
-  const [sortBy, setSortBy] = useState('name'); // ⚡ NEW: 'name' or 'score'
+  const [sortBy, setSortBy] = useState('score'); // ⚡ NEW: default to 'score' (highest points)
+
+  // Refs for menu buttons + menus so we can detect outside clicks and position menus
+  const sortBtnRef = useRef(null);
+  const gridBtnRef = useRef(null);
+  const sortMenuRef = useRef(null);
+  const gridMenuRef = useRef(null);
 
   // ⚡ NEW: Helper to get students in the correct order
   const getSortedStudents = () => {
@@ -165,6 +173,22 @@ export default function ClassDashboard({
     document.addEventListener('fullscreenchange', handleFsChange);
     return () => document.removeEventListener('fullscreenchange', handleFsChange);
   }, []);
+
+  // Close menus when clicking outside of the buttons/menus
+  useEffect(() => {
+    const onDocClick = (e) => {
+      if (!showSortMenu && !showGridMenu) return;
+      const target = e.target;
+      if (sortBtnRef.current && sortBtnRef.current.contains(target)) return;
+      if (gridBtnRef.current && gridBtnRef.current.contains(target)) return;
+      if (sortMenuRef.current && sortMenuRef.current.contains(target)) return;
+      if (gridMenuRef.current && gridMenuRef.current.contains(target)) return;
+      setShowSortMenu(false);
+      setShowGridMenu(false);
+    };
+    document.addEventListener('click', onDocClick);
+    return () => document.removeEventListener('click', onDocClick);
+  }, [showSortMenu, showGridMenu]);
   // --- BUZZER STATE ---
   const [buzzerState, setBuzzerState] = useState('idle'); // 'idle', 'counting', 'buzzing'
   const [buzzerCount, setBuzzerCount] = useState(5);
@@ -475,26 +499,29 @@ export default function ClassDashboard({
         <nav
           style={(() => {
             if (isMobile) {
+              // On mobile: render a narrow left aside with better spacing
               return {
-                // Compact bottom tab bar on small screens
                 position: 'fixed',
                 left: 0,
-                right: 0,
-                bottom: 0,
-                top: 'auto',
-                height: '64px',
+                top: 0,
+                height: '100vh',
+                width: '72px',
                 zIndex: 1000,
                 display: 'flex',
-                flexDirection: 'row',
-                justifyContent: 'space-around',
+                flexDirection: 'column',
+                justifyContent: 'flex-start',
                 alignItems: 'center',
-                padding: '8px 12px',
+                gap: '18px',
+                padding: '20px 8px',
                 background: '#fff',
-                transform: sidebarVisible ? 'translateY(0)' : 'translateY(100%)',
+                transform: sidebarVisible ? 'translateX(0)' : 'translateX(-100%)',
                 transition: 'transform 0.25s ease',
-                boxShadow: sidebarVisible ? '0 -10px 30px rgba(0,0,0,0.06)' : 'none'
+                boxShadow: sidebarVisible ? '0 0 20px rgba(0,0,0,0.06)' : 'none',
+                outline: '3px solid rgba(99,102,241,0.12)',
+                borderRight: '1px solid rgba(0,0,0,0.04)'
               };
             }
+            // Default (desktop): keep as left aside
             return {
               ...styles.sidebar,
               position: 'fixed',
@@ -504,7 +531,8 @@ export default function ClassDashboard({
               zIndex: 1000,
               transform: sidebarVisible ? 'translateX(0)' : 'translateX(-100%)',
               transition: 'transform 0.3s ease',
-              boxShadow: sidebarVisible ? '0 0 20px rgba(0,0,0,0.1)' : 'none'
+              boxShadow: sidebarVisible ? '0 0 20px rgba(0,0,0,0.1)' : 'none',
+              outline: '3px solid rgba(99,102,241,0.08)'
             };
           })()}
         >
@@ -643,34 +671,35 @@ export default function ClassDashboard({
             onClick={() => setSidebarVisible(!sidebarVisible)}
             style={(() => {
               if (isMobile) {
-                // Floating toggle above the bottom tab bar on mobile
+                // Mobile: chevron sits at the left and retracts to the far left when aside is hidden
                 return {
                   position: 'fixed',
-                  right: 12,
-                  bottom: sidebarVisible ? '74px' : '12px',
-                  zIndex: 1100,
+                  left: sidebarVisible ? '82px' : '0',
+                  top: 53,
+                  zIndex: 11010,
                   background: 'white',
-                  border: 'none',
-                  borderRadius: 12,
+                  border: '2px solid rgba(99,102,241,0.12)',
+                  borderRadius: '0 8px 8px 0',
                   width: '48px',
                   height: '48px',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
                   cursor: 'pointer',
-                  boxShadow: '0 8px 22px rgba(0,0,0,0.14)',
+                  boxShadow: '0 8px 22px rgba(0,0,0,0.18)',
                   transition: 'all 0.25s ease',
                   // Subtle pulse when sidebar is hidden to hint at its presence
-                  animation: !sidebarVisible ? 'pulseChevron 1.6s ease-in-out infinite' : 'none'
+                  animation: !sidebarVisible ? 'pulseChevron 1.6s ease-in-out infinite' : 'none',
+                  willChange: 'transform'
                 };
               }
               return {
                 position: 'fixed',
-                left: sidebarVisible ? '80px' : '0',
-                top: '58px',
-                zIndex: 999,
+                left: sidebarVisible ? '88px' : '8px',
+                top: 53,
+                zIndex: 11010,
                 background: 'white',
-                border: 'none',
+                border: '2px solid rgba(99,102,241,0.12)',
                 borderRadius: '0 8px 8px 0',
                 width: '40px',
                 height: '48px',
@@ -678,8 +707,8 @@ export default function ClassDashboard({
                 alignItems: 'center',
                 justifyContent: 'center',
                 cursor: 'pointer',
-                boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-                transition: 'all 0.3s ease',
+                boxShadow: '0 6px 18px rgba(0,0,0,0.12)',
+                transition: 'all 0.28s ease',
                 willChange: 'transform'
               };
             })()}
@@ -748,7 +777,7 @@ export default function ClassDashboard({
 
           </div>
         )}
-        <main style={{ ...styles.content, marginLeft: (!isMobile && sidebarVisible) ? '80px' : '0', transition: 'margin-left 0.3s ease', paddingBottom: isMobile ? '96px' : undefined }}>
+        <main style={{ ...styles.content, marginLeft: sidebarVisible ? (isMobile ? '72px' : '80px') : '0', transition: 'margin-left 0.3s ease', paddingBottom: isMobile ? '32px' : undefined }}>
 
           {/* 1. MESSAGES VIEW */}
           {viewMode === 'messages' ? (
@@ -845,7 +874,7 @@ export default function ClassDashboard({
                 /* 3. STANDARD DASHBOARD VIEW (Default) */
 
                 <>
-                  <header style={styles.header}>
+                  <header style={{ ...styles.header, padding: isMobile ? '8px 12px' : styles.header.padding, marginLeft: isMobile ? '8px' : styles.header.marginLeft, flexDirection: 'row', alignItems: 'flex-start' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                         <h2 style={{ fontSize: '1.5rem', fontWeight: 900, color: '#0F172A', margin: 0 }}>
@@ -865,22 +894,30 @@ export default function ClassDashboard({
                     <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
                       <div style={{ position: 'relative' }}>
                         <button
-                          onClick={() => setShowSortMenu(!showSortMenu)}
-                          onMouseEnter={(e) => e.target.style.background = '#F1F5F9'}
-                          onMouseLeave={(e) => e.target.style.background = '#fff'}
+                          ref={sortBtnRef}
+                          onClick={() => setShowSortMenu(prev => { const next = !prev; if (next) setShowGridMenu(false); return next; })}
+                          onMouseEnter={(e) => e.currentTarget.style.background = '#F8FAFC'}
+                          onMouseLeave={(e) => e.currentTarget.style.background = '#fff'}
                           style={{
-                            ...styles.actionBtn, // Re-uses your existing button shape
                             background: '#fff',
                             color: '#475569',
                             boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)',
-                            border: '1px solid #E2E8F0'
+                            border: '1px solid #E2E8F0',
+                            width: 48,
+                            height: 44,
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            borderRadius: 12,
+                            cursor: 'pointer'
                           }}
+                          title="Sort"
                         >
-                          <ArrowUpDown size={18} /> Sort
+                          <ArrowUpDown size={22} />
                         </button>
 
                         {showSortMenu && (
-                          <div style={styles.gridMenu}> {/* Re-uses your existing menu style */}
+                          <div style={styles.gridMenu} ref={sortMenuRef}> {/* Re-uses your existing menu style */}
                             <div style={{ padding: '8px 16px', fontSize: '11px', fontWeight: 900, color: '#94A3B8', textTransform: 'uppercase', letterSpacing: '1px' }}>Sort By</div>
 
                             <button
@@ -916,43 +953,56 @@ export default function ClassDashboard({
                       {/* Layout / Grid Menu */}
                       <div style={{ position: 'relative' }}>
                         <button
-                          onClick={() => setShowGridMenu(!showGridMenu)}
-                          onMouseEnter={(e) => e.target.style.background = '#F1F5F9'}
-                          onMouseLeave={(e) => e.target.style.background = '#fff'}
+                          ref={gridBtnRef}
+                          onClick={() => setShowGridMenu(prev => { const next = !prev; if (next) setShowSortMenu(false); return next; })}
+                          onMouseEnter={(e) => e.currentTarget.style.background = '#F8FAFC'}
+                          onMouseLeave={(e) => e.currentTarget.style.background = '#fff'}
                           style={{
-                            ...styles.actionBtn,
                             background: '#fff',
                             color: '#475569',
                             boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)',
-                            border: '1px solid #E2E8F0'
+                            border: '1px solid #E2E8F0',
+                            width: 48,
+                            height: 44,
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            borderRadius: 12,
+                            cursor: 'pointer'
                           }}
+                          title="Layout"
                         >
-                          <Sliders size={18} /> Layout
+                          <Sliders size={22} />
                         </button>
 
                         {showGridMenu && (
-                          <div style={styles.gridMenu}>
-                            <div style={{ padding: '8px 16px', fontSize: '11px', fontWeight: 900, color: '#94A3B8', textTransform: 'uppercase', letterSpacing: '1px' }}>Display Size</div>
-                            {['small', 'medium', 'big'].map((size) => (
+                          <div style={styles.gridMenu} ref={gridMenuRef}>
+                            <div style={{ padding: '6px 12px', fontSize: '11px', fontWeight: 900, color: '#94A3B8', textTransform: 'uppercase', letterSpacing: '1px' }}>Display Size</div>
+                            {[
+                              { key: 'compact', label: 'Compact' },
+                              { key: 'regular', label: 'Regular' },
+                              { key: 'spacious', label: 'Spacious' }
+                            ].map(({ key, label }) => (
                               <button
-                                key={size}
-                                onClick={() => { setDisplaySize(size); setShowGridMenu(false); }}
+                                key={key}
+                                onClick={() => { setDisplaySize(key); setShowGridMenu(false); }}
                                 onMouseEnter={(e) => {
                                   e.currentTarget.style.background = '#F8FAFC';
                                   e.currentTarget.style.transform = 'translateX(4px)';
                                 }}
                                 onMouseLeave={(e) => {
-                                  e.currentTarget.style.background = displaySize === size ? '#EEF2FF' : 'transparent';
+                                  e.currentTarget.style.background = displaySize === key ? '#EEF2FF' : 'transparent';
                                   e.currentTarget.style.transform = 'translateX(0)';
                                 }}
                                 style={{
                                   ...styles.gridOption,
-                                  background: displaySize === size ? '#EEF2FF' : 'transparent',
-                                  color: displaySize === size ? '#6366F1' : '#475569'
+                                  padding: '10px 12px',
+                                  background: displaySize === key ? '#EEF2FF' : 'transparent',
+                                  color: displaySize === key ? '#6366F1' : '#475569'
                                 }}
                               >
-                                {size.charAt(0).toUpperCase() + size.slice(1)} View
-                                {displaySize === size && <CheckCircle size={16} />}
+                                {label}
+                                {displaySize === key && <CheckCircle size={16} />}
                               </button>
 
                             ))}
@@ -961,69 +1011,44 @@ export default function ClassDashboard({
                       </div>
 
 
-                      {/* FLOATING FULLSCREEN TOGGLE */}
                       <button
                         onClick={toggleFullscreen}
-                        onMouseEnter={(e) => {
-                          e.currentTarget.style.transform = 'scale(1.1) translateY(-5px)';
-                          e.currentTarget.style.boxShadow = '0 20px 40px rgba(0,0,0,0.15)';
-                        }}
-                        onMouseLeave={(e) => {
-                          e.currentTarget.style.transform = 'scale(1) translateY(0)';
-                          e.currentTarget.style.boxShadow = '0 10px 20px rgba(0,0,0,0.1)';
-                        }}
+                        onMouseEnter={(e) => { e.currentTarget.style.background = '#F8FAFC'; }}
+                        onMouseLeave={(e) => { e.currentTarget.style.background = '#fff'; }}
                         style={{
+                          background: '#fff',
+                          color: isFullscreen ? '#6366F1' : '#475569',
+                          border: '1px solid #E2E8F0',
+                          width: 48,
+                          height: 44,
                           display: 'flex',
                           alignItems: 'center',
                           justifyContent: 'center',
-                          position: 'relative',
-                          bottom: 'auto',
-                          right: 'auto',
-                          width: '60px',
-                          height: '60px',
-                          borderRadius: '20px',
-                          background: 'rgba(255, 255, 255, 0.8)',
-                          backdropFilter: 'blur(12px)',
-                          border: '1px solid rgba(255, 255, 255, 0.3)',
-
-                          cursor: 'pointer',
-                          zIndex: 9999, // Stays above everything including the Buzzer
-                          boxShadow: '0 10px 20px rgba(0,0,0,0.1)',
-                          transition: 'all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)',
-                          color: isFullscreen ? '#6366F1' : '#475569'
+                          borderRadius: 12,
+                          cursor: 'pointer'
                         }}
                         title={isFullscreen ? "Exit Fullscreen" : "Enter Fullscreen"}
                       >
-                        {isFullscreen ? <Minimize size={28} /> : <Maximize size={28} />}
+                        {isFullscreen ? <Minimize size={22} /> : <Maximize size={22} />}
                       </button>
                     </div>
 
                   </header>
 
                   <div className="student-cards-container" style={{
-                    display: 'grid', gap: displaySize === 'small' ? '12px' : '28px', gridTemplateColumns: displaySize === 'small'
+                    display: 'grid',
+                    gridTemplateColumns: displaySize === 'compact'
                       ? 'repeat(auto-fill, minmax(140px, 1fr))'
-                      : displaySize === 'medium'
+                      : displaySize === 'regular'
                         ? 'repeat(auto-fill, minmax(200px, 1fr))'
                         : 'repeat(auto-fill, minmax(280px, 1fr))',
-                    // ⚡ FIX: Use a fixed gap so it doesn't expand when the sidebar closes
-                    gap: '20px',
-                    padding: '20px',
+                    gap: displaySize === 'compact' ? '12px' : displaySize === 'regular' ? '20px' : '28px',
+                    padding: '16px',
                     width: '100%',
                     alignContent: 'start', // Keeps rows tight at the top
                     justifyContent: 'start'
                   }}>
                     <div style={{ position: 'relative', minWidth: 0, aspectRatio: '1 / 1', display: 'flex' }}>
-                      <div onClick={() => setShowClassBehaviorModal(true)}
-                        onMouseEnter={(e) => {
-                          e.currentTarget.style.transform = 'translateY(-2px) scale(1.02)';
-                          e.currentTarget.style.boxShadow = '0 15px 25px -5px rgba(99, 102, 241, 0.5)';
-                        }}
-                        onMouseLeave={(e) => {
-                          e.currentTarget.style.transform = 'translateY(0) scale(1)';
-                          e.currentTarget.style.boxShadow = '0 10px 20px -5px rgba(99, 102, 241, 0.4)';
-                        }} style={styles.actionBtn}>
-                        <div style={{ position: 'relative', minWidth: 0, aspectRatio: '1 / 1', display: 'flex' }}>
                           <div onClick={() => setShowClassBehaviorModal(true)}
                             onMouseEnter={(e) => {
                               e.currentTarget.style.transform = 'translateY(-2px) scale(1.02)';
@@ -1032,36 +1057,46 @@ export default function ClassDashboard({
                             onMouseLeave={(e) => {
                               e.currentTarget.style.transform = 'translateY(0) scale(1)';
                               e.currentTarget.style.boxShadow = '0 10px 20px -5px rgba(99, 102, 241, 0.4)';
-                            }}
-                            style={styles.actionBtn}>
+                            }} style={styles.actionBtn}>
+                            <div style={{ position: 'relative', minWidth: 0, aspectRatio: '1 / 1', display: 'flex' }}>
+                              <div onClick={() => setShowClassBehaviorModal(true)}
+                                onMouseEnter={(e) => {
+                                  e.currentTarget.style.transform = 'translateY(-2px) scale(1.02)';
+                                  e.currentTarget.style.boxShadow = '0 15px 25px -5px rgba(99, 102, 241, 0.5)';
+                                }}
+                                onMouseLeave={(e) => {
+                                  e.currentTarget.style.transform = 'translateY(0) scale(1)';
+                                  e.currentTarget.style.boxShadow = '0 10px 20px -5px rgba(99, 102, 241, 0.4)';
+                                }}
+                                style={styles.actionBtn}>
 
-                            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%' }}>
-                              <SmilePlus size={60} />
-                              <div style={{ marginTop: 12, fontWeight: '900', fontSize: '1.2rem' }}>Whole Class</div>
+                                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%' }}>
+                                  <SmilePlus size={40} />
+                                  <div style={{ marginTop: 10, fontWeight: '900', fontSize: '1rem' }}>Whole Class</div>
 
-                              {/* ⚡ TOTAL CLASS POINTS DISPLAY ⚡ */}
-                              <div style={{
-                                marginTop: '15px',
-                                padding: '4px 14px',
-                                background: 'rgba(0, 0, 0, 0.2)', // Darker translucent for readability
-                                borderRadius: '20px',
-                                fontSize: '25px',
-                                fontWeight: '800',
-                                color: '#FFFFFF',
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '8px',
-                                border: '1px solid rgba(255, 255, 255, 0.3)',
-                                backdropFilter: 'blur(12px)'
-                              }}>
-                                <Trophy size={18} color="#FFD700" fill="#FFD700" />
-                                {totalClassPoints.toLocaleString()} Pts
+                                  {/* ⚡ TOTAL CLASS POINTS DISPLAY ⚡ */}
+                                  <div style={{
+                                    marginTop: '10px',
+                                    padding: '4px 12px',
+                                    background: 'rgba(0, 0, 0, 0.2)', // Darker translucent for readability
+                                    borderRadius: '16px',
+                                    fontSize: '18px',
+                                    fontWeight: '800',
+                                    color: '#FFFFFF',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '8px',
+                                    border: '1px solid rgba(255, 255, 255, 0.3)',
+                                    backdropFilter: 'blur(12px)'
+                                  }}>
+                                    <Trophy size={16} color="#FFD700" fill="#FFD700" />
+                                    {totalClassPoints.toLocaleString()} Pts
+                                  </div>
+                                </div>
                               </div>
                             </div>
-                          </div>
-                        </div>
 
-                      </div>
+                          </div>
                     </div>
                     {getSortedStudents().map((s) => {
                       const today = new Date().toISOString().split('T')[0];
@@ -1273,16 +1308,17 @@ const styles = {
 
   gridMenu: {
     position: 'absolute',
-    top: '70px',
-    right: 0,
-    background: 'rgba(255, 255, 255, 0.95)',
-    backdropFilter: 'blur(16px)',
-    borderRadius: '24px',
-    padding: '12px',
-    boxShadow: '0 20px 40px rgba(0,0,0,0.12), 0 0 0 1px rgba(0,0,0,0.05)',
-    zIndex: 9999, // IMPORTANT: Put this on top of everything
-    minWidth: '240px',
-    border: '1px solid #fff'
+    top: '56px',
+    left: '50%',
+    transform: 'translateX(-50%)',
+    background: 'rgba(255, 255, 255, 0.98)',
+    backdropFilter: 'blur(8px)',
+    borderRadius: '12px',
+    padding: '8px',
+    boxShadow: '0 12px 30px rgba(0,0,0,0.08)',
+    zIndex: 99999, // IMPORTANT: Put this on top of everything
+    minWidth: '180px',
+    border: '1px solid rgba(0,0,0,0.04)'
   },
 
   gridOption: {
@@ -1291,15 +1327,15 @@ const styles = {
     justifyContent: 'space-between',
     width: '100%',
     textAlign: 'left',
-    padding: '14px 18px',
+    padding: '10px 12px',
     marginBottom: '6px',
-    borderRadius: '16px',
+    borderRadius: '10px',
     cursor: 'pointer',
     border: 'none',
     background: 'transparent',
-    fontWeight: '700',
+    fontWeight: '800',
     color: '#475569',
-    fontSize: '14px',
-    transition: 'all 0.2s ease'
+    fontSize: '13px',
+    transition: 'all 0.16s ease'
   },
 }
