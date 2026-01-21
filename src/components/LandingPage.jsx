@@ -359,7 +359,7 @@ export default function LandingPage({ onLoginSuccess, classes, setClasses, refre
       </section>
 
       {/* --- FEATURES --- */}
-      <div style={modernStyles.bentoGrid}>
+      <div style={{ ...modernStyles.bentoGrid, ...(isMobile ? modernStyles.bentoGridMobile : {}) }}>
         <MotionCard className="lp-bento-card" style={{ ...modernStyles.bentoCard, background: 'linear-gradient(135deg, #F0FDF4 0%, #fff 100%)' }}>
           <div style={modernStyles.iconBoxGreen}><GaugeCircle size={28} color="#16A34A" /></div>
           <h3>{t('features.meter.title')}</h3>

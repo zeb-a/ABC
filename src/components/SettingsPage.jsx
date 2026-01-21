@@ -1,17 +1,23 @@
 import React, { useState } from 'react';
-import { ChevronLeft, Trash2, Edit2, Plus, LayoutGrid, X, Save } from 'lucide-react';
+import { Edit2, Plus, X, RefreshCw, Trash2, Save } from 'lucide-react';
 import api from '../services/api';
 import InlineHelpButton from './InlineHelpButton';
 
-const EMOJI_OPTIONS = ['⭐', '🌟', '✨', '👏', '🎉', '🔥', '💪', '🤩', '😔', '👎', '😤', '⚠️', '❌', '🙅', '😠'];
+const EMOJI_OPTIONS = [
+  '⭐','🌟','✨','👏','🎉','🔥','💪','🤩','😊','😄','🙂','😍','😎','🤝','📚',
+  '📖','🏅','🥇','👍','👎','⚠️','❌','✅','❤️','💛','💚','💙','🧡','🤍','🧠','📝',
+  '🎯','🏆','🚀','🎒','🧩','🔔','📣','📢','🍎','🍪','⚽','🏀','🎵',
+  '😇','🤗','🤔','😅','😜','🦄','🌈','🍓','🍉','🥳','🤖','👑','💡','🔆','🧸','🛡️',
+  '🎖️','📎','🧪','⚡','🌱','🌻','🍀','🍁','🌊','🌙','☀️','🕶️','🎨','📌','🧭','🔭'
+];
 
 export default function SettingsPage({ activeClass, behaviors, onBack, onUpdateBehaviors }) {
-  const [activeTab, setActiveTab] = useState('cards'); // 'cards' | 'students' | 'general'
+  const [activeTab] = useState('cards'); // 'cards' | 'students' | 'general'
   const [cards, setCards] = useState(Array.isArray(behaviors) ? behaviors : []);
   const [, setSidebarCollapsed] = useState(false);
   const [editingCardId, setEditingCardId] = useState(null);
   const [editingCard, setEditingCard] = useState({ label: '', pts: 0, icon: '⭐', type: 'wow' });
-  const [isEmojiPickerOpen, setIsEmojiPickerOpen] = useState(false);
+  const [openEmojiFor, setOpenEmojiFor] = useState(null);
 
   React.useEffect(() => setCards(Array.isArray(behaviors) ? behaviors : []), [behaviors]);
 
@@ -34,6 +40,12 @@ export default function SettingsPage({ activeClass, behaviors, onBack, onUpdateB
     } catch (e) {
       console.warn('Failed to reload behaviors:', e.message);
     }
+  };
+
+  const persistBehaviors = async (updated) => {
+    setCards(updated);
+    if (onUpdateBehaviors) onUpdateBehaviors(updated);
+    try { await api.saveBehaviors(activeClass?.id, updated); } catch (e) { console.warn('saveBehaviors failed', e.message); }
   };
 
   // Inject mobile-friendly overrides for Settings page
@@ -88,13 +100,46 @@ const handleBackClick = () => {
     <div className="settings-page-root" style={styles.pageContainer}>
       {/* Top Navigation Bar */}
       <header style={styles.header}>
-        <div style={styles.headerLeft} onClick={handleBackClick}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <h2 style={{ margin: 0 }}>Settings: {activeClass.name}</h2>
-            <InlineHelpButton pageId="settings" />
-          </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
         </div>
-        <button style={styles.doneBtn} onClick={handleBackClick}> <X size={24} /></button>
+        <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+          <button
+            title="Add card"
+            onClick={() => {
+              const newCard = { id: Date.now(), label: 'New Card', pts: 1, type: 'wow', icon: '⭐' };
+              const updated = [newCard, ...cards];
+              setCards(updated);
+              setEditingCardId(newCard.id);
+              setEditingCard({ label: newCard.label, pts: newCard.pts, icon: newCard.icon, type: newCard.type });
+            }}
+            style={{ ...styles.iconBtn, padding: 10 }}
+            aria-label="Add card"
+          ><Plus size={18} /></button>
+          <button
+            title="Reset behaviors"
+            onClick={async () => {
+              const INITIAL_BEHAVIORS = [
+                { id: 1, label: 'Helped Friend', pts: 1, type: 'wow', icon: '🤝' },
+                { id: 2, label: 'Great Work', pts: 2, type: 'wow', icon: '🌟' },
+                { id: 3, label: 'On Task', pts: 1, type: 'wow', icon: '📖' },
+                { id: 4, label: 'Kindness', pts: 1, type: 'wow', icon: '❤️' },
+                { id: 5, label: 'Noisy', pts: -1, type: 'nono', icon: '📢' },
+                { id: 6, label: 'Disruptive', pts: -2, type: 'nono', icon: '⚠️' }
+              ];
+              try {
+                await api.deleteNewCards();
+              } catch (e) {
+                console.warn('Failed to delete "New Card" entries:', e.message);
+              }
+              setCards(INITIAL_BEHAVIORS);
+              onUpdateBehaviors && onUpdateBehaviors(INITIAL_BEHAVIORS);
+              setEditingCardId(null);
+            }}
+            style={{ ...styles.iconBtn, padding: 10 }}
+            aria-label="Reset behaviors"
+          ><RefreshCw size={18} /></button>
+          <button style={styles.doneBtn} onClick={handleBackClick}><X size={18} /></button>
+        </div>
       </header>
 
       <div style={styles.mainLayout}>
@@ -124,92 +169,60 @@ const handleBackClick = () => {
           {activeTab === 'cards' ? (
             <section>
               <div style={styles.sectionHeader}>
-                <h3>Behavior Point Cards</h3>
-                <div style={{ display: 'flex', gap: '10px' }}>
-                  <button
-                    style={styles.addBtnModern}
-                    onClick={() => {
-                      const newCard = { id: Date.now(), label: 'New Card', pts: 1, type: 'wow', icon: '⭐' };
-                      const updated = [newCard, ...cards];
-                      setCards(updated);
-                      setEditingCardId(newCard.id);
-                      setEditingCard({ label: newCard.label, pts: newCard.pts, icon: newCard.icon, type: newCard.type });
-                    }}
-                  ><Plus size={18}/> Add Card</button>
-                  <button
-                    style={{...styles.addBtnModern, background: '#FF7675'}}
-                    onClick={async () => {
-                      const INITIAL_BEHAVIORS = [
-                        { id: 1, label: 'Helped Friend', pts: 1, type: 'wow', icon: '🤝' },
-                        { id: 2, label: 'Great Work', pts: 2, type: 'wow', icon: '🌟' },
-                        { id: 3, label: 'On Task', pts: 1, type: 'wow', icon: '📖' },
-                        { id: 4, label: 'Kindness', pts: 1, type: 'wow', icon: '❤️' },
-                        { id: 5, label: 'Noisy', pts: -1, type: 'nono', icon: '📢' },
-                        { id: 6, label: 'Disruptive', pts: -2, type: 'nono', icon: '⚠️' }
-                      ];
-                      
-                      // Delete all "New Card" entries from backend
-                      try {
-                        await api.deleteNewCards();
-                        // ...existing code...
-                      } catch (e) {
-                        console.warn('Failed to delete "New Card" entries:', e.message);
-                      }
-                      
-                      setCards(INITIAL_BEHAVIORS);
-                      onUpdateBehaviors && onUpdateBehaviors(INITIAL_BEHAVIORS);
-                      setEditingCardId(null);
-                    }}
-                  >Reset to Defaults</button>
-                </div>
+                  <div />
               </div>
               <div style={styles.cardList}>
                 {cards.map(card => (
                   <div key={card.id} style={styles.settingItem}>
                     <div style={styles.itemInfo}>
-                      <span style={styles.itemIcon}>{card.icon}</span>
-                      <div>
-                        {editingCardId === card.id ? (
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 16, minWidth: 420 }}>
-                            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
-                              <div style={{ width: 64, height: 64, borderRadius: 16, display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#FFF8E1', fontSize: 28 }}>{editingCard.icon}</div>
-                              <button onClick={() => setIsEmojiPickerOpen(s => !s)} style={{ ...styles.iconBtn, padding: '6px 10px', fontSize: 16 }}>Change</button>
+                      <div style={{ position: 'relative' }}>
+                        {/* Only allow opening emoji picker when editing this card */}
+                        <button
+                          onClick={() => {
+                            if (editingCardId === card.id) {
+                              setOpenEmojiFor(openEmojiFor === card.id ? null : card.id);
+                            }
+                          }}
+                          style={{ ...styles.iconBtn, width: 44, height: 44, fontSize: 20 }}
+                          aria-label="Pick emoji"
+                        >
+                          {editingCardId === card.id ? (editingCard.icon) : (card.icon)}
+                        </button>
+                        {openEmojiFor === card.id && (
+                          <div style={styles.centerEmojiModal} onClick={e => e.stopPropagation()}>
+                            <div style={styles.centerEmojiGrid}>
+                              {EMOJI_OPTIONS.map(em => (
+                                <button key={em} onClick={() => {
+                                  if (editingCardId === card.id) {
+                                    setEditingCard(prev => ({ ...prev, icon: em }));
+                                  } else {
+                                    const updated = cards.map(c => c.id === card.id ? { ...c, icon: em } : c);
+                                    persistBehaviors(updated);
+                                  }
+                                  setOpenEmojiFor(null);
+                                }} style={{ ...styles.emojiBtn, padding: 8, fontSize: 20 }}>{em}</button>
+                              ))}
                             </div>
-                            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 10 }}>
+                          </div>
+                        )}
+                      </div>
+                      <div>
+                          {editingCardId === card.id ? (
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+                                  {/* Remove large avatar in edit view; left avatar opens picker */}
+                            <div style={{ flex: 1, minWidth: 0, display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
                               <input
                                 value={editingCard.label}
                                 onChange={(e) => setEditingCard(prev => ({ ...prev, label: e.target.value }))}
                                 placeholder="Card label"
-                                style={{ padding: '12px 14px', borderRadius: 12, border: '1px solid #E6EEF8', fontSize: 16 }}
+                                style={{ padding: '10px 12px', borderRadius: 10, border: '1px solid #E6EEF8', fontSize: 15, flex: '1 1 140px', minWidth: 120 }}
                               />
-                              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: '#fff', padding: 6, borderRadius: 12, border: '1px solid #EEF2FF' }}>
-                                  <button onClick={() => { const pts = Number(editingCard.pts) - 1; setEditingCard(prev => ({ ...prev, pts, type: pts > 0 ? 'wow' : 'nono' })); }} style={{ ...styles.iconBtn, padding: '6px 8px' }}>-</button>
-                                  <div style={{ minWidth: 72, textAlign: 'center', fontSize: 18, fontWeight: 800 }}>{editingCard.pts}</div>
-                                  <button onClick={() => { const pts = Number(editingCard.pts) + 1; setEditingCard(prev => ({ ...prev, pts, type: pts > 0 ? 'wow' : 'nono' })); }} style={{ ...styles.iconBtn, padding: '6px 8px' }}>+</button>
-                                </div>
-                                <div style={{ color: editingCard.pts > 0 ? '#16A34A' : '#DC2626', fontWeight: 700 }}>{editingCard.pts > 0 ? 'WOW' : 'NONO'}</div>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                <button onClick={() => { const pts = Number(editingCard.pts) - 1; setEditingCard(prev => ({ ...prev, pts, type: pts > 0 ? 'wow' : 'nono' })); }} style={styles.smallIconBtn} aria-label="Decrease">-</button>
+                                <div style={{ minWidth: 36, textAlign: 'center', fontWeight: 800 }}>{editingCard.pts}</div>
+                                <button onClick={() => { const pts = Number(editingCard.pts) + 1; setEditingCard(prev => ({ ...prev, pts, type: pts > 0 ? 'wow' : 'nono' })); }} style={styles.smallIconBtn} aria-label="Increase">+</button>
                               </div>
-                              {isEmojiPickerOpen && (
-                                <div style={styles.emojiGrid}>
-                                  {EMOJI_OPTIONS.map(emoji => (
-                                    <button
-                                      key={emoji}
-                                      onClick={() => {
-                                        setEditingCard(prev => ({ ...prev, icon: emoji }));
-                                        setIsEmojiPickerOpen(false);
-                                      }}
-                                      style={{
-                                        ...styles.emojiBtn,
-                                        background: editingCard.icon === emoji ? '#E8F5E9' : 'transparent',
-                                        fontSize: 20
-                                      }}
-                                    >
-                                      {emoji}
-                                    </button>
-                                  ))}
-                                </div>
-                              )}
+                              {/* Emoji grid inside edit area removed to avoid duplicate menus. Left avatar opens a single compact picker. */}
                             </div>
                           </div>
                         ) : (
@@ -224,15 +237,14 @@ const handleBackClick = () => {
                     </div>
                     <div style={styles.itemActions}>
                       {editingCardId === card.id ? (
-                        <>
-                          <button onClick={() => handleSaveCard(card.id)} style={{ ...styles.saveBtn, padding: '10px 16px', marginRight: 8 }}>Save</button>
-                          <button onClick={() => setEditingCardId(null)} style={{ ...styles.cancelBtn, padding: '10px 14px', marginRight: 8 }}>Cancel</button>
-                          <button onClick={() => { handleDeleteCard(card.id); setEditingCardId(null); }} style={{ ...styles.deleteConfirmBtn, padding: '10px 14px' }}>Delete</button>
-                        </>
+                        <div style={styles.verticalActionStack}>
+                          <button onClick={() => handleSaveCard(card.id)} style={styles.saveIconBtn} aria-label="Save"><Save size={18} /></button>
+                          <button onClick={() => setEditingCardId(null)} style={styles.cancelIconBtn} aria-label="Cancel"><X size={18} /></button>
+                        </div>
                       ) : (
                         <>
-                          <button onClick={() => { setEditingCardId(card.id); setEditingCard({ label: card.label, pts: card.pts, icon: card.icon, type: card.type }); }} style={{ ...styles.actionIcon, background: 'transparent', border: 'none', cursor: 'pointer' }}>Edit</button>
-                          <button onClick={() => handleDeleteCard(card.id)} style={{ ...styles.actionIcon, color: '#FF7675', background: 'transparent', border: 'none', cursor: 'pointer' }}>Delete</button>
+                          <button onClick={() => { setEditingCardId(card.id); setEditingCard({ label: card.label, pts: card.pts, icon: card.icon, type: card.type }); }} style={styles.iconOnlyBtn} aria-label="Edit"><Edit2 size={16} /></button>
+                          <button onClick={() => handleDeleteCard(card.id)} style={styles.iconOnlyBtn} aria-label="Delete"><Trash2 size={16} /></button>
                         </>
                       )}
                     </div>
@@ -271,9 +283,22 @@ const styles = {
   emojiPickerBtn: { background: '#fff', border: '1px solid #E6EEF8', padding: '8px 12px', borderRadius: '10px', cursor: 'pointer', fontSize: '14px' },
   emojiGrid: { display: 'grid', gridTemplateColumns: 'repeat(8, 1fr)', gap: '6px', marginTop: 8, padding: '10px', background: 'rgba(255,255,255,0.9)', borderRadius: '12px', boxShadow: '0 8px 30px rgba(2,6,23,0.08)' },
   emojiBtn: { fontSize: '20px', border: 'none', borderRadius: '8px', padding: '8px', cursor: 'pointer', background: 'transparent' },
+  // compact grid picker that appears in a centered top overlay
+  verticalEmojiGrid: { position: 'absolute', left: -140, top: 0, display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 6, padding: 8, background: '#fff', borderRadius: 8, boxShadow: '0 8px 24px rgba(2,6,23,0.12)', zIndex: 2500 },
+  centerEmojiModal: { position: 'fixed', top: 72, left: '50%', transform: 'translateX(-50%)', zIndex: 3500, display: 'flex', justifyContent: 'center', width: 'min(760px, 90%)', pointerEvents: 'auto' },
+  centerEmojiGrid: { width: '100%', background: '#fff', padding: 12, borderRadius: 12, boxShadow: '0 20px 60px rgba(2,6,23,0.12)', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(44px, 1fr))', gap: 8, justifyItems: 'center', alignItems: 'center' },
+  verticalActionStack: { display: 'flex', flexDirection: 'column', gap: 8, alignItems: 'center' },
   hoverIcons: { position: 'absolute', top: 12, right: 12, display: 'flex', gap: 8 },
   // small circular icon button used in the modern controls
   iconBtn: { background: 'white', border: '1px solid #EEF2FF', borderRadius: 8, padding: '6px 8px', cursor: 'pointer', color: '#2563EB', fontWeight: 700 },
+  compactBtn: { padding: 8, borderRadius: 8, border: '1px solid #E6EEF8', background: 'white', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' },
+  compactDelete: { padding: 8, borderRadius: 8, border: '1px solid #ffd6d6', background: 'white', color: '#FF6B6B', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' },
+  iconOnlyBtn: { background: 'transparent', border: 'none', cursor: 'pointer', padding: 6, color: '#2563EB', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' },
+  smallIconBtn: { padding: '6px 8px', borderRadius: 8, border: '1px solid #EEF2FF', background: 'white', cursor: 'pointer' },
+  saveActionBtn: { padding: '8px 12px', borderRadius: '10px', background: '#2E7D32', color: 'white', border: 'none', fontWeight: 700, cursor: 'pointer' },
+  cancelActionBtn: { padding: '8px 12px', borderRadius: '10px', background: 'transparent', color: '#333', border: '1px solid #E6EEF8', fontWeight: 700, cursor: 'pointer', marginLeft: 8 },
+  saveIconBtn: { width: 44, height: 44, padding: 8, borderRadius: 12, background: '#2E7D32', color: 'white', border: 'none', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' },
+  cancelIconBtn: { width: 44, height: 44, padding: 8, borderRadius: 12, background: 'transparent', color: '#333', border: '1px solid #E6EEF8', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' , marginLeft: 0 },
   editOverlay: { position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 2000 },
   editModal: { background: 'white', padding: '30px', borderRadius: '24px', width: '450px', boxShadow: '0 20px 60px rgba(0,0,0,0.3)' },
   editModalHeader: { display: 'flex', justifyContent: 'space-between', marginBottom: '20px', alignItems: 'center' },

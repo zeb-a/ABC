@@ -490,34 +490,39 @@ export default function ReportsPage({ activeClass, studentId, isParentView, onBa
                             <div style={styles.aiInsightSection}>
                                 <div style={styles.aiPulse} />
                                 <p style={styles.aiText}><strong>{t.aiSummary}</strong></p>
-                                {/* Editable feedback section */}
-                                {editingFeedback[student.id] ? (
-                                    <SimpleWysiwyg
-                                        value={typeof feedback[student.id] === 'string' ? feedback[student.id] : (typeof teacherNote === 'string' ? teacherNote : '')}
-                                        onChange={e => setFeedback(f => ({ ...f, [student.id]: e && e.target && typeof e.target.value === 'string' ? e.target.value : '' }))}
-                                        style={{ width: '100%', minHeight: 80, marginTop: 8, borderRadius: 8 }}
-                                    />
+                                {/* Editable feedback section (read-only for parents) */}
+                                {isParentView ? (
+                                    <div style={{ marginTop: 8, fontSize: 15 }} dangerouslySetInnerHTML={{ __html: feedback[student.id] || teacherNote }} />
                                 ) : (
-                                    <div style={{ marginTop: 8, fontSize: 15 }}
-                                        dangerouslySetInnerHTML={{ __html: feedback[student.id] || teacherNote }} />
+                                    <>
+                                        {editingFeedback[student.id] ? (
+                                            <SimpleWysiwyg
+                                                value={typeof feedback[student.id] === 'string' ? feedback[student.id] : (typeof teacherNote === 'string' ? teacherNote : '')}
+                                                onChange={e => setFeedback(f => ({ ...f, [student.id]: e && e.target && typeof e.target.value === 'string' ? e.target.value : '' }))}
+                                                style={{ width: '100%', minHeight: 80, marginTop: 8, borderRadius: 8 }}
+                                            />
+                                        ) : (
+                                            <div style={{ marginTop: 8, fontSize: 15 }} dangerouslySetInnerHTML={{ __html: feedback[student.id] || teacherNote }} />
+                                        )}
+                                        <div style={{ marginTop: 8 }}>
+                                            {editingFeedback[student.id] ? (
+                                                <button
+                                                    style={{ ...styles.goBackBtn, color: '#4CAF50', borderColor: '#4CAF50', marginRight: 8 }}
+                                                    onClick={() => setEditingFeedback(e => ({ ...e, [student.id]: false }))}
+                                                >
+                                                    Save
+                                                </button>
+                                            ) : (
+                                                <button
+                                                    style={{ ...styles.goBackBtn, color: '#6366f1', borderColor: '#6366f1', marginRight: 8 }}
+                                                    onClick={() => setEditingFeedback(e => ({ ...e, [student.id]: true }))}
+                                                >
+                                                    Edit
+                                                </button>
+                                            )}
+                                        </div>
+                                    </>
                                 )}
-                                <div style={{ marginTop: 8 }}>
-                                    {editingFeedback[student.id] ? (
-                                        <button
-                                            style={{ ...styles.goBackBtn, color: '#4CAF50', borderColor: '#4CAF50', marginRight: 8 }}
-                                            onClick={() => setEditingFeedback(e => ({ ...e, [student.id]: false }))}
-                                        >
-                                            Save
-                                        </button>
-                                    ) : (
-                                        <button
-                                            style={{ ...styles.goBackBtn, color: '#6366f1', borderColor: '#6366f1', marginRight: 8 }}
-                                            onClick={() => setEditingFeedback(e => ({ ...e, [student.id]: true }))}
-                                        >
-                                            Edit
-                                        </button>
-                                    )}
-                                </div>
                             </div>
 
                             <div style={{

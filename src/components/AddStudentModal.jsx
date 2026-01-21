@@ -131,19 +131,31 @@ export default function AddStudentModal({ onClose, onSave }) {
           value={name}
           onChange={(e) => setName(e.target.value)}
         />
+        {!name.trim() && (
+          <div style={{ color: '#EF4444', fontSize: 13, marginBottom: 8 }}>Please enter the student's name.</div>
+        )}
 
         <div style={styles.footer}>
           {/* CANCEL BUTTON */}
           <button style={styles.cancelBtn} onClick={onClose}>Cancel</button>
-          <button style={styles.saveBtn} onClick={() => {
-            try {
-              onSave({ name, gender, avatar: avatarUrl });
-              // Notify onboarding guide (if waiting) that add-student completed
-              window.dispatchEvent(new CustomEvent('onboarding:actionComplete', { detail: { stepId: 'add-student' } }));
-            } catch (e) {
-              console.error('Add student failed', e);
-            }
-          }}>Add Student</button>
+          <button
+            style={{
+              ...styles.saveBtn,
+              opacity: name.trim() ? 1 : 0.6,
+              cursor: name.trim() ? 'pointer' : 'not-allowed'
+            }}
+            onClick={() => {
+              if (!name.trim()) return;
+              try {
+                onSave({ name: name.trim(), gender, avatar: avatarUrl });
+                // Notify onboarding guide (if waiting) that add-student completed
+                if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('onboarding:actionComplete', { detail: { stepId: 'add-student' } }));
+              } catch (e) {
+                console.error('Add student failed', e);
+              }
+            }}
+            disabled={!name.trim()}
+          >Add Student</button>
         </div>
       </div>
     </div>

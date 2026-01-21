@@ -1,6 +1,6 @@
 /* eslint-disable no-unused-vars */
 import React, { useMemo, useEffect } from 'react';
-import { ChevronLeft, Trophy, Star, ArrowUp, Flag } from 'lucide-react';
+import { ChevronLeft, Trophy, Star, ArrowUp, Flag, X } from 'lucide-react';
 import { motion } from 'framer-motion';
 import SafeAvatar from './SafeAvatar';
 
@@ -45,7 +45,7 @@ export default function EggRoad({ classData, onBack }) {
       
       {/* HEADER */}
       <div style={styles.header}>
-        <button onClick={onBack} style={styles.backBtn}><ChevronLeft /> Exit Map</button>
+        <button onClick={onBack} aria-label="Close map" title="Close" style={styles.backBtn}><X size={18} /></button>
         <div style={styles.classStatus}>
           <div style={styles.levelBadge}>{currentLevel.icon} {currentLevel.name}</div>
           <div style={styles.totalScore}>Class Energy: {classTotal}</div>
@@ -118,7 +118,7 @@ export default function EggRoad({ classData, onBack }) {
 const styles = {
   container: { position: 'fixed', inset: 0, zIndex: 9999, transition: 'background 1s ease', overflow: 'hidden', fontFamily: 'system-ui' },
   header: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '20px 40px', background: 'rgba(0,0,0,0.1)' },
-  backBtn: { background: 'white', border: 'none', padding: '12px 24px', borderRadius: '15px', fontWeight: 'bold', cursor: 'pointer', display: 'flex', alignItems: 'center' },
+  backBtn: { background: 'white', border: 'none', padding: '8px', width: '40px', height: '40px', borderRadius: '10px', fontWeight: '700', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 6px 18px rgba(0,0,0,0.08)' },
   classStatus: { textAlign: 'center' },
   levelBadge: { color: 'white', fontSize: '24px', fontWeight: '900', textShadow: '0 2px 4px rgba(0,0,0,0.3)' },
   totalScore: { color: 'rgba(255,255,255,0.8)', fontWeight: 'bold', fontSize: '18px' },

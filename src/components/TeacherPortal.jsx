@@ -223,6 +223,9 @@ export default function TeacherPortal({ user, classes, onSelectClass, onAddClass
               value={newClassName}
               onChange={(e) => setNewClassName(e.target.value)}
             />
+            {!newClassName.trim() && (
+              <div style={{ color: '#EF4444', fontSize: 13, marginBottom: 8 }}>Please enter a class name.</div>
+            )}
             <div style={{ display: 'flex', gap: 12, alignItems: 'center', marginBottom: 12 }}>
               <div style={{ width: 64, height: 64, borderRadius: 12, overflow: 'hidden', background: '#F3F4F6', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 <SafeAvatar src={newClassAvatar || boringAvatar(newClassName || 'class')} name={newClassName} alt="class" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
@@ -254,9 +257,20 @@ export default function TeacherPortal({ user, classes, onSelectClass, onAddClass
                 </div>
               ))}
             </div>
-            <button onClick={handleCreateClass} style={styles.saveBtn}>Create Class</button>
+            <button
+              onClick={handleCreateClass}
+              style={{ ...styles.saveBtn, opacity: newClassName.trim() ? 1 : 0.6, cursor: newClassName.trim() ? 'pointer' : 'not-allowed' }}
+              disabled={!newClassName.trim()}
+            >Create Class</button>
           </div>
         </div>
+      )}
+
+      {/* Floating Add button on mobile */}
+      {typeof window !== 'undefined' && window.innerWidth <= 768 && (
+        <button onClick={() => setShowAddModal(true)} style={{ position: 'fixed', right: 16, bottom: 20, zIndex: 2000, width: 56, height: 56, borderRadius: 16, background: '#4CAF50', color: '#fff', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 8px 20px rgba(0,0,0,0.18)', cursor: 'pointer' }} aria-label="Add class">
+          <Plus size={22} />
+        </button>
       )}
 
       {/* USAGE GUIDE: replaced by InlineHelpButton */}

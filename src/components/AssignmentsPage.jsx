@@ -9,7 +9,7 @@ import {
 export default function AssignmentsPage({ activeClass, onBack, onPublish }) {
   const [title, setTitle] = useState('');
   const [showSuccess, setShowSuccess] = useState(false);
-  const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+  const [isMobile, setIsMobile] = useState(typeof window !== 'undefined' ? window.innerWidth < 768 : false);
 
   useEffect(() => {
     const handleResize = () => setIsMobile(window.innerWidth < 768);
@@ -125,9 +125,9 @@ export default function AssignmentsPage({ activeClass, onBack, onPublish }) {
       )}
       <header style={styles.header}>
         
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
           <input
-            style={styles.titleInput}
+            style={{ ...styles.titleInput, width: isMobile ? '160px' : styles.titleInput.width }}
             placeholder="Type Worksheet title..."
             value={title}
             onChange={e => setTitle(e.target.value)}
@@ -150,8 +150,8 @@ export default function AssignmentsPage({ activeClass, onBack, onPublish }) {
             </div>
           </div>
 
-          <button onClick={handlePublish} style={styles.publishBtn}>
-            <Send size={18} /> Publish to Class
+          <button onClick={handlePublish} style={styles.publishBtn} title="Publish to Class">
+            <Send size={18} />{!isMobile && ' Publish to Class'}
           </button>
             <button onClick={onBack} style={styles.backBtn}><X size={18} /></button>
         </div>

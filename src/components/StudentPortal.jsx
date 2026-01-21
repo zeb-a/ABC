@@ -170,9 +170,7 @@ const StudentPortal = ({ onBack, classes = [], refreshClasses }) => {
           <button onClick={() => setLang(lang === 'en' ? 'zh' : 'en')} style={{ background: '#F1F5F9', border: 'none', padding: '12px 20px', borderRadius: '16px', fontWeight: 800, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px' }}>
             <Globe size={18} /> {t.langToggle}
           </button>
-          <button onClick={refreshClasses} style={{ background: '#10B981', color: '#fff', border: 'none', padding: '12px 24px', borderRadius: '16px', fontWeight: 800, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <Clock size={18} /> {t.refresh}
-          </button>
+          {/* Refresh button removed on mobile/student portal per Phase 1 UX decision */}
           <button onClick={handleLogout} style={{ background: 'linear-gradient(135deg, #6366F1 0%, #8B5CF6 100%)', color: '#fff', border: 'none', padding: '12px 24px', borderRadius: '16px', fontWeight: 800, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px' }}>
             <LogOut size={18} /> {t.logout}
           </button>

@@ -273,6 +273,36 @@ function App() {
     });
   };
 
+  // Handler to import students into a class (used by SettingsPage if open at top-level)
+  const handleImportFromClass = async (targetClassId, toAdd = []) => {
+    try {
+      if (!toAdd || !toAdd.length) return;
+      const targetId = String(targetClassId);
+
+      updateClasses((prev) => prev.map((c) => {
+        if (String(c.id) !== targetId) return c;
+        const existingNames = new Set((c.students || []).map(s => (s.name || '').trim().toLowerCase()));
+        const newStudents = toAdd.map(s => ({
+          ...s,
+          id: Date.now() + Math.floor(Math.random() * 10000),
+          name: s.name,
+          avatar: s.avatar || undefined,
+          score: Number(s.score) || 0
+        })).filter(ns => !existingNames.has((ns.name || '').trim().toLowerCase()));
+
+        // Add access codes for each new student
+        const existingCodes = c.Access_Codes || {};
+        newStudents.forEach(ns => {
+          existingCodes[ns.id] = { parentCode: Math.floor(10000 + Math.random() * 90000).toString(), studentCode: Math.floor(10000 + Math.random() * 90000).toString() };
+        });
+
+        return { ...c, students: [...(c.students || []), ...newStudents], Access_Codes: existingCodes };
+      }));
+    } catch (err) {
+      console.warn('Import students handler failed', err);
+    }
+  };
+
   const activeClass = classes.find(c => c.id === activeClassId) || null;
 
   // Function to manually refresh classes from backend
@@ -530,6 +560,7 @@ function App() {
         onBack={() => setView('dashboard')}
         onUpdateBehaviors={(next) => setBehaviors(next)}
         onUpdateStudents={(nextStudents) => updateClasses(prev => prev.map(c => c.id === activeClass.id ? { ...c, students: nextStudents } : c))}
+        onImportFromClass={handleImportFromClass}
       />
     );
   }
