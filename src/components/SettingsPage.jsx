@@ -168,9 +168,7 @@ const handleBackClick = () => {
         <main style={styles.content}>
           {activeTab === 'cards' ? (
             <section>
-              <div style={styles.sectionHeader}>
-                  <div />
-              </div>
+         
               <div style={styles.cardList}>
                 {cards.map(card => (
                   <div key={card.id} style={styles.settingItem}>

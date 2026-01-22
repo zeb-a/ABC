@@ -20,12 +20,21 @@ export default function EggRoad({ classData, onBack }) {
     { id: 1, name: "Green Forest", color: "#2ecc71", icon: "🌳", min: 0 },
     { id: 2, name: "Cloud Kingdom", color: "#3498db", icon: "☁️", min: 500 },
     { id: 3, name: "Star Galaxy", color: "#9b59b6", icon: "✨", min: 1000 },
-    { id: 4, name: "Golden Victory", color: "#f1c40f", icon: "👑", min: 2000 }
+    { id: 4, name: "Golden Victory", color: "#f1c40f", icon: "👑", min: 2000 },
+    { id: 5, name: "Star Galaxy", color: "#2f3033ff", icon: "✨", min: 5000 },
+    { id: 6, name: "Golden Victory", color: "#f10f0fff", icon: "👑", min: 10000 }
+
   ];
 
   // Calculate current level based on total points
   const currentLevel = [...levels].reverse().find(l => classTotal >= l.min) || levels[0];
-  const progressPercentage = Math.min((classTotal / 2500) * 100, 100);
+  // Calculate the min and max for the vertical track
+  const minPoints = levels[0].min;
+  const maxPoints = levels[levels.length - 1].min;
+  // Clamp classTotal between min and max
+  const clampedTotal = Math.max(minPoints, Math.min(classTotal, maxPoints));
+  // Progress as a percentage of the full track (from min to max)
+  const progressPercentage = ((clampedTotal - minPoints) / (maxPoints - minPoints)) * 100;
 
   // inject a small mobile-friendly stylesheet so EggRoad fits narrow screens
   useEffect(() => {
@@ -67,12 +76,16 @@ export default function EggRoad({ classData, onBack }) {
           />
 
           {/* Level Markers */}
-          {levels.map(level => (
-            <div key={level.id} style={{ ...styles.marker, bottom: `${(level.min / 2500) * 100}%` }}>
-              <div style={styles.markerLine} />
-              <span style={styles.markerText}>{level.icon} {level.min}</span>
-            </div>
-          ))}
+          {levels.map(level => {
+            // Place marker relative to min/max range
+            const markerPercent = ((level.min - minPoints) / (maxPoints - minPoints)) * 100;
+            return (
+              <div key={level.id} style={{ ...styles.marker, bottom: `${markerPercent}%` }}>
+                <div style={styles.markerLine} />
+                <span style={styles.markerText}>{level.icon} {level.min}</span>
+              </div>
+            );
+          })}
 
           {/* THE CLASS AVATAR GROUP (Moving up the track) */}
           <motion.div 
@@ -80,8 +93,9 @@ export default function EggRoad({ classData, onBack }) {
             animate={{ y: [0, -10, 0] }}
             transition={{ repeat: Infinity, duration: 3 }}
           >
-            <div style={styles.leaderLabel}>Current Progress</div>
+            
             <div style={styles.topFiveContainer}>
+              
               {topPerformers.map((student, index) => (
                 <div key={student.id} style={{ 
                   ...styles.starWrapper, 
@@ -93,7 +107,9 @@ export default function EggRoad({ classData, onBack }) {
                   <div style={styles.studentName}>{student.name}</div>
                 </div>
               ))}
+              
             </div>
+            <div style={styles.leaderLabel}>Top of Class</div>
             <div style={styles.climbArrow}><ArrowUp size={30} color="white" /></div>
           </motion.div>
         </div>
@@ -124,15 +140,15 @@ const styles = {
   totalScore: { color: 'rgba(255,255,255,0.8)', fontWeight: 'bold', fontSize: '18px' },
   trophyIcon: { background: 'white', padding: '10px', borderRadius: '50%', boxShadow: '0 4px 10px rgba(0,0,0,0.2)' },
 
-  climbArea: { height: '70vh', position: 'relative', marginTop: '40px', display: 'flex', justifyContent: 'center' },
-  verticalTrack: { width: '12px', height: '100%', background: 'rgba(255,255,255,0.2)', borderRadius: '10px', position: 'relative' },
-  trackFill: { position: 'absolute', bottom: 0, width: '100%', background: 'white', borderRadius: '10px', boxShadow: '0 0 20px white' },
+  climbArea: { height: '75vh', position: 'relative', marginTop: '1px', display: 'flex', justifyContent: 'center' },
+  verticalTrack: { width: '28px', height: '100%', background: 'rgba(255,255,255,0.2)', borderRadius: '10px', position: 'relative' },
+  trackFill: { position: 'absolute', bottom: 0, width: '100%', background: 'white', borderRadius: '10px', boxShadow: '0 0 100px white' },
   
   marker: { position: 'absolute', left: '20px', display: 'flex', alignItems: 'center', width: '200px' },
   markerLine: { width: '40px', height: '2px', background: 'rgba(255,255,255,0.5)', marginRight: '10px' },
   markerText: { color: 'white', fontWeight: 'bold', fontSize: '14px' },
 
-  avatarGroup: { position: 'absolute', left: '50%', transform: 'translateX(-50%)', display: 'flex', flexDirection: 'column', alignItems: 'center', width: '600px' },
+  avatarGroup: { position: 'absolute', right: '50%', transform: 'translateX(-50%)', display: 'flex', flexDirection: 'column', alignItems: 'center', minWidth: '200px' },
   leaderLabel: { background: '#ff7675', color: 'white', padding: '5px 15px', borderRadius: '20px', fontSize: '12px', fontWeight: 'bold', marginBottom: '10px' },
   topFiveContainer: { display: 'flex', gap: '20px', alignItems: 'flex-end', background: 'rgba(255,255,255,0.1)', padding: '20px', borderRadius: '40px', backdropFilter: 'blur(5px)' },
   starWrapper: { position: 'relative', textAlign: 'center' },

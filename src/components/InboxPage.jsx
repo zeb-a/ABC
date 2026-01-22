@@ -5,6 +5,8 @@ import InlineHelpButton from './InlineHelpButton';
 const InboxPage = ({ submissions, onGradeSubmit, onBack }) => {
   const [selectedSub, setSelectedSub] = useState(null);
   const [grade, setGrade] = useState('');
+  const [sidebarVisible, setSidebarVisible] = useState(false);
+  const isMobile = typeof window !== 'undefined' ? window.innerWidth < 768 : false;
 
   const pending = submissions.filter(s => s.status === 'submitted');
   const graded = submissions.filter(s => s.status === 'graded');
@@ -16,6 +18,10 @@ const InboxPage = ({ submissions, onGradeSubmit, onBack }) => {
 
   const submit = async () => {
     await onGradeSubmit(selectedSub.id, grade);
+    // Try to update student's total points in parent/class dashboard if possible
+    if (selectedSub?.student_id && typeof window !== 'undefined' && window.dispatchEvent) {
+      window.dispatchEvent(new CustomEvent('studentPointsUpdated', { detail: { studentId: selectedSub.student_id, points: Number(grade) } }));
+    }
     setSelectedSub(null);
   };
 
@@ -36,6 +42,35 @@ const InboxPage = ({ submissions, onGradeSubmit, onBack }) => {
       
       {/* MAIN GRADING AREA */}
       <div style={pageStyles.main}>
+        {/* Header with X and ? top right, and nav toggle */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '18px 24px 0 0', minHeight: 48 }}>
+          <div />
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            {/* Nav toggle button: show tooltip on desktop, text label on mobile */}
+            <button
+              onClick={() => setSidebarVisible(v => !v)}
+              style={{ background: '#F1F5F9', border: 'none', borderRadius: 8, padding: 8, cursor: 'pointer', marginRight: 4, display: 'flex', flexDirection: 'column', alignItems: 'center' }}
+              title={!isMobile ? 'Show Inbox Nav' : undefined}
+            >
+              <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><rect x="3" y="5" width="14" height="2" rx="1" fill="#64748B"/><rect x="3" y="9" width="14" height="2" rx="1" fill="#64748B"/><rect x="3" y="13" width="14" height="2" rx="1" fill="#64748B"/></svg>
+              {isMobile && <span style={{ fontSize: 10, color: '#64748B', marginTop: 2 }}>Inbox</span>}
+            </button>
+            {/* Help button: tooltip on desktop, text label on mobile */}
+            <span style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+              <InlineHelpButton pageId="inbox" />
+              {isMobile && <span style={{ fontSize: 10, color: '#64748B', marginTop: 2 }}>Help</span>}
+            </span>
+            {/* Close button: tooltip on desktop, text label on mobile */}
+            <button
+              onClick={onBack}
+              style={{ background: '#F1F5F9', border: 'none', borderRadius: 8, padding: 8, cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center' }}
+              title={!isMobile ? 'Close' : undefined}
+            >
+              <X size={20} />
+              {isMobile && <span style={{ fontSize: 10, color: '#64748B', marginTop: 2 }}>Close</span>}
+            </button>
+          </div>
+        </div>
         {selectedSub ? (
           <div style={pageStyles.workstation}>
             <header style={pageStyles.workHeader}>
@@ -43,7 +78,6 @@ const InboxPage = ({ submissions, onGradeSubmit, onBack }) => {
                 <h1 style={{ fontSize: '24px', fontWeight: 800 }}>{selectedSub.student_name}</h1>
                 <p style={{ color: '#666' }}>{selectedSub.assignment_title}</p>
               </div>
-
               <div style={pageStyles.badge}>{selectedSub.status}</div>
             </header>
 
@@ -58,17 +92,19 @@ const InboxPage = ({ submissions, onGradeSubmit, onBack }) => {
             </div>
 
             <footer style={pageStyles.gradingBar}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
-                <Award color="#4CAF50" />
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <input
-                  type="text"
-                  placeholder="Points (e.g. 95/100)"
+                  type="number"
+                  min="0"
+                  placeholder="Points"
                   value={grade}
                   onChange={(e) => setGrade(e.target.value)}
-                  style={pageStyles.gradeInput}
+                  style={{ width: 60, fontSize: 16, padding: '6px 8px', borderRadius: 8, border: '1px solid #DDD', marginRight: 4, textAlign: 'center' }}
                 />
+                <button onClick={submit} style={{ background: '#1976D2', border: 'none', borderRadius: '50%', width: 36, height: 36, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }} title="Save Grade">
+                  <Award color="#FFF" size={20} />
+                </button>
               </div>
-              <button onClick={submit} style={pageStyles.submitBtn}>Save Grade & Send</button>
             </footer>
           </div>
         ) : (
@@ -79,20 +115,11 @@ const InboxPage = ({ submissions, onGradeSubmit, onBack }) => {
         )}
       </div>
       
-     <div style={pageStyles.sidebar}>
-      
-      <div style={pageStyles.sidebarHeader}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+     {sidebarVisible && !selectedSub && (
+      <div style={pageStyles.sidebar}>
+        <div style={pageStyles.sidebarHeader}>
           <h2 style={{ fontSize: '18px', fontWeight: 800, margin: 0 }}>Inbox</h2>
-          <InlineHelpButton pageId="inbox" />
         </div>
-        <div style={pageStyles.closeBtn}>
-          <button onClick={onBack} style={pageStyles.closeBtn}>
-            <X size={20} />
-          </button>
-        </div>
-      </div>
-
         <div style={pageStyles.scrollArea}>
           <SectionLabel label="Waiting for Review" count={pending.length} color="#FF4757" />
           {pending.map(sub => (
@@ -103,7 +130,6 @@ const InboxPage = ({ submissions, onGradeSubmit, onBack }) => {
               onClick={() => handleSelect(sub)}
             />
           ))}
-
           <div style={{ marginTop: '30px' }} />
           <SectionLabel label="Recently Graded" count={graded.length} color="#4CAF50" />
           {graded.map(sub => (
@@ -117,6 +143,7 @@ const InboxPage = ({ submissions, onGradeSubmit, onBack }) => {
           ))}
         </div>
       </div>
+     )}
 
     </div>
   );

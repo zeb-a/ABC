@@ -30,17 +30,20 @@ export default function Whiteboard({ onClose }) {
       const dpr = window.devicePixelRatio || 1;
       // subtract header height so canvas fits below the top nav
       const headerHeight = document.querySelector('.topNav')?.getBoundingClientRect().height || 80;
+      // Use document.documentElement.clientWidth for true viewport width (prevents shifting)
+      const availW = document.documentElement.clientWidth;
       const availH = Math.max(200, window.innerHeight - headerHeight);
-      canvas.width = window.innerWidth * dpr;
+      canvas.width = availW * dpr;
       canvas.height = availH * dpr;
-      canvas.style.width = `${window.innerWidth}px`;
+      canvas.style.width = `${availW}px`;
       canvas.style.height = `${availH}px`;
 
+      ctx.setTransform(1, 0, 0, 1, 0, 0); // Reset transform before scaling
       ctx.scale(dpr, dpr);
       ctx.lineCap = 'round';
       ctx.lineJoin = 'round';
       ctx.fillStyle = "white";
-      ctx.fillRect(0, 0, window.innerWidth, availH);
+      ctx.fillRect(0, 0, availW, availH);
       contextRef.current = ctx;
     };
 
@@ -53,7 +56,16 @@ export default function Whiteboard({ onClose }) {
   useEffect(() => {
     const style = document.createElement('style');
     style.id = 'wb-mobile-styles';
-    style.innerHTML = `@media (max-width:768px){ .whiteboard-root { padding: 12px !important; } .whiteboard-root .topNav { height: 64px !important; padding: 8px 12px !important; } .whiteboard-root .sidebar { display:none !important; } }`;
+    style.innerHTML = `@media (max-width:768px){ 
+      html, body { overflow-x: hidden !important; }
+      .whiteboard-root { padding: 0 !important; width: 100vw !important; min-width: 0 !important; overflow-x: hidden !important; }
+      .whiteboard-root .topNav { height: 56px !important; padding: 6px 6px !important; }
+      .whiteboard-root .sidebar { display: flex !important; flex-direction: row !important; position: fixed !important; left: 0 !important; right: 0 !important; top: auto !important; bottom: 0 !important; width: 100vw !important; height: 56px !important; border-radius: 0 !important; box-shadow: 0 -2px 16px rgba(0,0,0,0.06) !important; padding: 0 4px !important; justify-content: space-between !important; align-items: center !important; z-index: 200 !important; }
+      .whiteboard-root .sidebar > * { margin: 0 2px !important; }
+      .whiteboard-root .canvasContainer { padding: 0 !important; width: 100vw !important; }
+      .whiteboard-root canvas { border-radius: 0 !important; box-shadow: none !important; width: 100vw !important; margin: 0 !important; display: block !important; }
+      .whiteboard-root input[type='text'] { min-width: 120px !important; max-width: 90vw !important; font-size: 20px !important; }
+    }`;
     document.head.appendChild(style);
     return () => { const el = document.getElementById('wb-mobile-styles'); if (el) el.remove(); };
   }, []);
@@ -138,7 +150,7 @@ export default function Whiteboard({ onClose }) {
       <div className="topNav" style={styles.topNav}>
         <div style={styles.logoGroup}>
           <div style={styles.iconCircle}><Palette size={20} color="white" /></div>
-          <span style={styles.boardTitle}>Classroom Creative Board</span>
+          <span style={styles.boardTitle}>Creative Board</span>
         </div>
         <div style={styles.topActions}>
           <InlineHelpButton pageId="whiteboard" />
@@ -149,7 +161,7 @@ export default function Whiteboard({ onClose }) {
             style={{...styles.saveBtn, background: isSaving ? '#22C55E' : 'linear-gradient(135deg, #6366F1 0%, #A855F7 100%)'}}
           >
             {isSaving ? <Check size={18} /> : <Download size={18} />}
-            {isSaving ? "Saved!" : "Export PNG"}
+            {isSaving ? "Saved!" : "Save"}
           </motion.button>
           <button onClick={onClose} style={styles.closeBtn}><X size={24} /></button>
         </div>
@@ -260,7 +272,24 @@ const styles = {
   topActions: { display: 'flex', alignItems: 'center', gap: '15px' },
   saveBtn: { display: 'flex', alignItems: 'center', gap: '10px', color: 'white', border: 'none', padding: '12px 24px', borderRadius: '16px', fontWeight: '800', cursor: 'pointer', transition: '0.3s' },
   closeBtn: { background: '#F1F5F9', border: 'none', width: '45px', height: '45px', borderRadius: '50%', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: '0.2s' },
-  sidebar: { position: 'absolute', right: '30px', top: '50%', transform: 'translateY(-50%)', width: '75px', background: 'rgba(255,255,255,0.95)', backdropFilter: 'blur(10px)', borderRadius: '25px', display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '20px 0', gap: '12px', boxShadow: '0 20px 50px rgba(0,0,0,0.1)', border: '1px solid #FFF', zIndex: 100 },
+  sidebar: {
+    position: 'absolute',
+    right: 0, // move to very edge
+    top: '50%',
+    transform: 'translateY(-50%)',
+    width: '75px',
+    background: 'rgba(255,255,255,0.95)',
+    backdropFilter: 'blur(10px)',
+    borderRadius: '25px',
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    padding: '20px 0',
+    gap: '12px',
+    boxShadow: '0 20px 50px rgba(0,0,0,0.1)',
+    border: '1px solid #FFF',
+    zIndex: 100
+  },
   toolBtn: { width: '50px', height: '50px', borderRadius: '15px', border: 'none', cursor: 'pointer', transition: 'all 0.2s', display: 'flex', alignItems: 'center', justifyContent: 'center' },
   sideDivider: { width: '30px', height: '1px', background: '#E2E8F0', margin: '5px 0' },
   colorWrapper: { position: 'relative', width: '45px', height: '45px' },
@@ -293,5 +322,19 @@ const styles = {
     canvasContainer: { padding: '12px' }
   },
   canvas: { background: 'white', borderRadius: '30px', boxShadow: '0 10px 60px rgba(0,0,0,0.05)', display: 'block' },
-  liveInput: { position: 'absolute', background: 'transparent', border: 'none', outline: 'none', fontSize: '32px', fontWeight: '900', minWidth: '400px', borderBottom: '2px solid #6366f1', padding: '5px' }
+  liveInput: {
+    position: 'absolute',
+    background: 'transparent',
+    border: 'none',
+    outline: 'none',
+    fontSize: '24px', // smaller for all screens
+    fontWeight: '900',
+    minWidth: '60px', // much smaller min width
+    maxWidth: '200px', // much smaller max width
+    borderBottom: '2px solid #6366f1',
+    padding: '5px',
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap',
+  }
 };

@@ -21,6 +21,7 @@ export default function AssignmentsPage({ activeClass, onBack, onPublish }) {
   ]);
   const [assignToAll, setAssignToAll] = useState(true);
   const [selectedStudents, setSelectedStudents] = useState([]);
+  const [assignMenu, setAssignMenu] = useState('all');
 
   // New States
   const [sidebarVisible, setSidebarVisible] = useState(true);
@@ -85,8 +86,26 @@ export default function AssignmentsPage({ activeClass, onBack, onPublish }) {
   };
 
   return (
-
     <div style={styles.container}>
+      {/* Floating Help Button */}
+      <div style={{
+        position: 'fixed',
+        bottom: 94,
+        right: -4,
+        zIndex: 3000,
+        boxShadow: '0 4px 16px rgba(79,70,229,0.18)',
+        borderRadius: '50%',
+        background: '#fff',
+        width: 56,
+        height: 56,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        border: '2px solid #E2E8F0',
+        cursor: 'pointer',
+      }}>
+        <InlineHelpButton pageId="assignments" />
+      </div>
       {showSuccess && (
         <div style={{
           position: 'fixed',
@@ -110,57 +129,86 @@ export default function AssignmentsPage({ activeClass, onBack, onPublish }) {
             boxShadow: '0 10px 25px rgba(76, 175, 80, 0.3)'
           }}>
             <CheckCircle2 size={32} />
-
-            {/* THIS IS THE FIX: A flex column div to stack the spans */}
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
               <span style={{ fontSize: '20px', fontWeight: 'bold' }}>
                 Assignment Published!
               </span>
-              {/* <span style={{ fontSize: '16px', fontWeight: '700', opacity: 0.9, marginTop: '14px' }}>
-                Back To Class
-              </span> */}
             </div>
           </div>
         </div>
       )}
-      <header style={styles.header}>
-        
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+      <header style={{
+        ...styles.header,
+        flexDirection: isMobile ? 'row' : 'row',
+        alignItems: 'center',
+        gap: isMobile ? 6 : 10,
+        width: '100%',
+        padding: isMobile ? '10px 6px' : styles.header.padding,
+        flexWrap: isMobile ? 'nowrap' : 'wrap',
+        justifyContent: isMobile ? 'space-between' : 'space-between',
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', flex: isMobile ? '1 1 0%' : undefined }}>
           <input
-            style={{ ...styles.titleInput, width: isMobile ? '160px' : styles.titleInput.width }}
+            style={{
+              ...styles.titleInput,
+              width: isMobile ? '38vw' : styles.titleInput.width,
+              minWidth: isMobile ? 90 : undefined,
+              marginLeft: isMobile ? 0 : styles.titleInput.marginLeft,
+              flex: isMobile ? '0 1 38vw' : undefined
+            }}
             placeholder="Type Worksheet title..."
             value={title}
             onChange={e => setTitle(e.target.value)}
           />
-          <InlineHelpButton pageId="assignments" />
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
-          <div style={styles.distributionSelector}>
-            <div
-              style={{ ...styles.toggleButton, background: assignToAll ? '#4F46E5' : '#E2E8F0', color: assignToAll ? '#fff' : '#64748B' }}
-              onClick={() => setAssignToAll(true)}
-            >
-              <Users size={16} /> All
-            </div>
-            <div
-              style={{ ...styles.toggleButton, background: !assignToAll ? '#4F46E5' : '#E2E8F0', color: !assignToAll ? '#fff' : '#64748B' }}
-              onClick={() => setAssignToAll(false)}
-            >
-              <User size={16} /> Select
-            </div>
-          </div>
-
-          <button onClick={handlePublish} style={styles.publishBtn} title="Publish to Class">
+        <div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? 6 : 10, justifyContent: 'flex-end', flex: isMobile ? '0 0 auto' : undefined }}>
+          <select
+            value={assignMenu}
+            onChange={e => {
+              const val = e.target.value;
+              setAssignMenu(val);
+              if (val === 'all') {
+                setAssignToAll(true);
+                setSelectedStudents([]);
+              } else {
+                setAssignToAll(false);
+                setSelectedStudents([val]);
+              }
+            }}
+            style={{
+              padding: isMobile ? '8px 10px' : '8px 16px',
+              borderRadius: 10,
+              border: '1.5px solid #E2E8F0',
+              fontWeight: 700,
+              fontSize: isMobile ? 13 : 15,
+              background: '#fff',
+              color: '#4F46E5',
+              marginLeft: isMobile ? 0 : 12,
+              minWidth: isMobile ? 60 : 90,
+              boxShadow: '0 2px 8px rgba(79,70,229,0.06)',
+              appearance: 'none',
+              outline: 'none',
+              cursor: 'pointer',
+              flexShrink: 0
+            }}
+          >
+            <option value="all">All</option>
+            {activeClass?.students?.map(student => (
+              <option key={student.id} value={student.id}>{student.name}</option>
+            ))}
+          </select>
+          <button onClick={handlePublish} style={{ ...styles.publishBtn, width: isMobile ? 'auto' : undefined, padding: isMobile ? '8px 10px' : styles.publishBtn.padding, marginLeft: isMobile ? 0 : undefined }} title="Publish to Class">
             <Send size={18} />{!isMobile && ' Publish to Class'}
           </button>
-            <button onClick={onBack} style={styles.backBtn}><X size={18} /></button>
+          <button onClick={onBack} style={{ ...styles.backBtn, padding: isMobile ? '8px' : styles.backBtn.padding, marginLeft: isMobile ? 0 : undefined }}><X size={18} /></button>
         </div>
       </header>
 
       <div style={styles.workspace}>
    
         <main style={styles.canvas}>
-          {!assignToAll && (
+          {/* Only show student selection list if not assigning to all and no student is selected from dropdown */}
+          {!assignToAll && selectedStudents.length === 0 && (
             <div style={{ width: '100%', maxWidth: '800px', marginBottom: '20px' }}>
               <div style={styles.studentList}>
                 {activeClass?.students?.map(student => (
@@ -211,37 +259,46 @@ export default function AssignmentsPage({ activeClass, onBack, onPublish }) {
                   </div>
                 )}
 
-                <div style={styles.questionRow}>
-                  <div style={{ flex: 1 }}>
+                <div style={{
+                  ...styles.questionRow,
+                  alignItems: 'flex-end',
+                  gap: 10,
+                  flexWrap: isMobile ? 'wrap' : 'nowrap',
+                }}>
+                  <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
                     <p style={{ ...styles.inputLabel, color: isInvalid ? '#E11D48' : '#64748B' }}>
                       Instruction / Question
                     </p>
-                    <input
-                      style={{
-                        ...styles.qInput,
-                        borderColor: isInvalid ? '#FECACA' : '#F1F5F9',
-                        background: isInvalid ? '#FFF1F2' : '#fff'
-                      }}
-                      placeholder={isInvalid ? "Type your question here..." : (q.type === 'blank' ? "Use [blank] for missing words..." : "What is the question?")}
-                      value={q.question}
-                      onChange={e => {
-                        const newQs = [...questions];
-                        newQs[idx].question = e.target.value;
-                        setQuestions(newQs);
-                        if (e.target.value.trim()) {
-                          setValidationErrors(prev => prev.filter(id => id !== q.id));
-                        }
-                      }}
-                    />
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <input
+                        style={{
+                          ...styles.qInput,
+                          borderColor: isInvalid ? '#FECACA' : '#F1F5F9',
+                          background: isInvalid ? '#FFF1F2' : '#fff',
+                          flex: 1,
+                          marginBottom: 0
+                        }}
+                        placeholder={isInvalid ? "Type your question here..." : (q.type === 'blank' ? "Use [blank] for missing words..." : "What is the question?")}
+                        value={q.question}
+                        onChange={e => {
+                          const newQs = [...questions];
+                          newQs[idx].question = e.target.value;
+                          setQuestions(newQs);
+                          if (e.target.value.trim()) {
+                            setValidationErrors(prev => prev.filter(id => id !== q.id));
+                          }
+                        }}
+                      />
+                      <button onClick={() => { setActivePhotoId(q.id); fileInputRef.current.click(); }} style={{ ...styles.imageIconBtn, marginTop: 0, marginBottom: 0, position: 'static' }}>
+                        {q.image ? <img src={q.image} style={styles.thumb} alt="" /> : <ImageIcon size={22} />}
+                      </button>
+                    </div>
                     {isInvalid && (
                       <div style={styles.errorText}>
                         <AlertCircle size={14} /> This question cannot be empty
                       </div>
                     )}
                   </div>
-                  <button onClick={() => { setActivePhotoId(q.id); fileInputRef.current.click(); }} style={styles.imageIconBtn}>
-                    {q.image ? <img src={q.image} style={styles.thumb} alt="" /> : <ImageIcon size={22} />}
-                  </button>
                 </div>
 
                 {/* Question Type Specific Content (Choice/Match) remains same as original */}

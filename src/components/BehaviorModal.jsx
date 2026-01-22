@@ -204,6 +204,7 @@ export default function BehaviorModal({ student, behaviors, onClose, onGivePoint
                     cursor: selectedClassId && toImport.length > 0 ? 'pointer' : 'not-allowed',
                     boxShadow: selectedClassId && toImport.length > 0 ? '0 12px 30px rgba(76,175,80,0.18)' : 'none'
                   }}
+                  data-enter-submit
                 >
                   {importing ? 'Importing…' : (toImport.length > 0 ? 'Import New Cards' : 'Nothing to Import')}
                 </button>

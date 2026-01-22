@@ -345,95 +345,127 @@ export default function ReportsPage({ activeClass, studentId, isParentView, onBa
 
     return (
         <div style={{ ...styles.container, padding: isMobile ? '20px' : '40px' }}>
-           {/* 1. PLACE IT HERE (At the very top of the div) */}
-     
-
-       
             <div style={{
                 ...styles.header,
-                flexDirection: isMobile ? 'column' : 'row',
-                alignItems: isMobile ? 'flex-start' : 'center',
-                gap: isMobile ? '20px' : '0'
+                flexDirection: 'row',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                gap: isMobile ? '10px' : '0',
+                position: 'relative',
+                paddingBottom: isMobile ? '10px' : '20px',
             }}>
-                <div style={styles.headerLeft}>
-                    {/* ⚡ ONLY SHOW IF NOT A PARENT VIEW */}
-                   
-                    {/* ⚡ HIDE THIS TITLE IF IT'S A PARENT VIEWING */}
+                {/* Header Left: Title (hidden for parent view) */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                     {!isParentView && (
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                            <h1 style={{ ...styles.mainTitle, fontSize: isMobile ? '20px' : '24px' }}>
-                                {selectedStudentId && !isParentView
-                                    ? `${activeClass?.students?.find(s => s.id === selectedStudentId)?.name || ''} - ${t.mainTitle(isParentView, activeClass?.name)}`
-                                    : t.mainTitle(isParentView, activeClass?.name)}
-                            </h1>
-                            <InlineHelpButton pageId="reports" />
+                        <h1 style={{ ...styles.mainTitle, fontSize: isMobile ? '18px' : '24px', margin: 0 }}>
+                            {selectedStudentId && !isParentView
+                                ? `${activeClass?.students?.find(s => s.id === selectedStudentId)?.name || ''} - ${t.mainTitle(isParentView, activeClass?.name)}`
+                                : t.mainTitle(isParentView, activeClass?.name)}
+                        </h1>
+                    )}
+                </div>
+                {/* Header Right: Select Menus and X Button */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? 6 : 12, position: 'relative', width: isMobile ? '100%' : 'auto' }}>
+                    {/* Language Select */}
+                    <div style={{ position: isMobile ? 'relative' : 'static', flex: isMobile ? 1 : 'none' }}>
+                        <select
+                            value={language}
+                            onChange={e => setLanguage(e.target.value)}
+                            style={{
+                                width: isMobile ? '100%' : undefined,
+                                padding: isMobile ? '6px 10px' : '8px 16px',
+                                borderRadius: '8px',
+                                border: '1px solid #e0e0e0',
+                                fontWeight: 700,
+                                fontSize: isMobile ? '13px' : '15px',
+                                background: '#f5f5f7',
+                                color: '#333',
+                                marginRight: isMobile ? 0 : 4,
+                                zIndex: isMobile ? 10 : undefined,
+                            }}
+                            aria-label="Select language"
+                        >
+                            <option value="en">English</option>
+                            <option value="zh">中文</option>
+                        </select>
+                    </div>
+                    {/* Period Select (week as default) */}
+                    <div style={{ position: isMobile ? 'relative' : 'static', flex: isMobile ? 1 : 'none' }}>
+                        <select
+                            value={timePeriod || 'week'}
+                            onChange={e => setTimePeriod(e.target.value)}
+                            style={{
+                                width: isMobile ? '100%' : undefined,
+                                padding: isMobile ? '6px 10px' : '8px 16px',
+                                borderRadius: '8px',
+                                border: '1px solid #e0e0e0',
+                                fontWeight: 700,
+                                fontSize: isMobile ? '13px' : '15px',
+                                background: '#f5f5f7',
+                                color: '#333',
+                                marginRight: isMobile ? 0 : 4,
+                                zIndex: isMobile ? 10 : undefined,
+                            }}
+                            aria-label="Select period"
+                        >
+                            <option value="week">{t.week}</option>
+                            <option value="month">{t.month}</option>
+                            <option value="year">{t.year}</option>
+                        </select>
+                    </div>
+                    {/* Student Select (if not parent and >1 student) */}
+                    {!studentId && activeClass && activeClass.students && activeClass.students.length > 1 && (
+                        <div style={{ position: isMobile ? 'relative' : 'static', flex: isMobile ? 1 : 'none' }}>
+                            <select
+                                value={selectedStudentId}
+                                onChange={e => setSelectedStudentId(e.target.value)}
+                                style={{
+                                    width: isMobile ? '100%' : undefined,
+                                    padding: isMobile ? '6px 10px' : '8px 16px',
+                                    borderRadius: '8px',
+                                    border: '1px solid #e0e0e0',
+                                    fontWeight: 600,
+                                    fontSize: isMobile ? '13px' : '14px',
+                                    background: '#fff',
+                                    color: '#333',
+                                    minWidth: '100px',
+                                    marginRight: isMobile ? 0 : 4,
+                                    zIndex: isMobile ? 10 : undefined,
+                                }}
+                                aria-label="Select student"
+                            >
+                                <option value="">All Students</option>
+                                {activeClass.students.map((student) => (
+                                    <option key={student.id} value={student.id}>
+                                        {student.name}
+                                    </option>
+                                ))}
+                            </select>
                         </div>
                     )}
-                    <div style={styles.langSelector}>
-                        <button
-                            onClick={() => setLanguage('en')}
-                            style={{ ...styles.langBtn, ...(language === 'en' ? styles.langBtnActive : {}) }}
-                        >
-                            English
-                        </button>
-                        <button
-                            onClick={() => setLanguage('zh')}
-                            style={{ ...styles.langBtn, ...(language === 'zh' ? styles.langBtnActive : {}) }}
-                        >
-                            中文
-                        </button>
-                    </div>
-                </div>
-
-                <div style={{
-                    ...styles.rightControls,
-                    flexDirection: isMobile ? 'column' : 'row',
-                    width: isMobile ? '100%' : 'auto'
-                }}>
-                    
-                    {!studentId && activeClass && activeClass.students && activeClass.students.length > 1 && (
-                        <select
-                            value={selectedStudentId}
-                            onChange={(e) => setSelectedStudentId(e.target.value)}
-                            style={{ ...styles.studentSelect, width: isMobile ? '100%' : 'auto' }}
-                        >
-                            <option value="">All Students</option>
-                            {activeClass.students.map((student) => (
-                                <option key={student.id} value={student.id}>
-                                    {student.name}
-                                </option>
-                            ))}
-                        </select>
-                    )}
-                    
-                    <div style={{ ...styles.filterBar, width: isMobile ? '100%' : 'auto', display: isMobile ? 'grid' : 'flex', gridTemplateColumns: '1fr 1fr 1fr' }}>
-                        {['week', 'month', 'year'].map((p) => (
-                            <button
-                                key={p}
-                                onClick={() => setTimePeriod(p)}
-                                style={{
-                                    ...styles.periodBtn,
-                                    ...(timePeriod === p ? styles.periodBtnActive : {}),
-                                    textAlign: 'center'
-                                }}
-                            >
-                                {t[p]}
-                            </button>
-                        ))}
-                    </div>
-                     {!isParentView && (
-                        
+                    {/* X Button (Go Back) - always visible, floats right on mobile */}
+                    {!isParentView && (
                         <button
                             onClick={onBack || (() => window.history.back())}
-                            style={styles.goBackBtn}
+                            style={{
+                                ...styles.goBackBtn,
+                                padding: isMobile ? '1px 0px' : '2px 8px',
+                                fontSize: isMobile ? '16px' : '18px',
+                                marginLeft: isMobile ? 1 : 1, // <-- increased from 2 to 7 for mobile
+                                position: isMobile ? 'absolute' : 'static',
+                                right: isMobile ? -15 : undefined, // <-- add 5px right offset
+                                top: isMobile ? 0 : undefined,
+                                zIndex: 2,
+                                background: '#fff',
+                                border: '1.5px solid #e0e0e0',
+                                boxShadow: isMobile ? '0 2px 8px rgba(0,0,0,0.07)' : undefined
+                            }}
                             aria-label="Go back"
                         >
-                            <X size={24} />
+                            <X size={isMobile ? 22 : 24} />
                         </button>
-                       
                     )}
                 </div>
-                
             </div>
 
             {displayStudents.length === 0 ? (

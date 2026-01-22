@@ -189,6 +189,7 @@ export default function ClassDashboard({
   const [showEditAvatarPicker, setShowEditAvatarPicker] = useState(false);
   const [hoveredEditChar, setHoveredEditChar] = useState(null);
   const [deleteConfirmStudentId, setDeleteConfirmStudentId] = useState(null);
+  const editFileInputRef = useRef(null);
   // TEMPORARY: default to visible so we can verify the aside and chevron are rendered.
   // Change this back to `false` after verifying in the browser.
   const [sidebarVisible, setSidebarVisible] = useState(true);
@@ -1032,9 +1033,8 @@ export default function ClassDashboard({
                         <InlineHelpButton pageId="class-dashboard" />
                       </div>
                       {isAttendanceMode && (
-                        <div style={{ background: '#FEF3C7', color: '#92400E', padding: '8px 12px', borderRadius: '10px', fontSize: '13px', fontWeight: 700, display: 'flex', gap: 12, alignItems: 'center' }}>
-                          <strong style={{ fontSize: '13px' }}>Attendance mode active</strong>
-                          <span style={{ fontWeight: 600, fontSize: '12px', color: '#92400E' }}>Click a student to mark absent; click again to mark present. Click the Attendance icon to exit.</span>
+                        <div style={{ background: '#FEF3C7', color: '#92400E', padding: '8px 12px', borderRadius: '10px', fontSize: '13px', fontWeight: 700, display: 'flex', gap: 10, alignItems: 'center' }}>
+                          <span style={{ fontWeight: 700, fontSize: '13px' }}>Attendance: Tap students to toggle. Tap icon to save & exit.</span>
                         </div>
                       )}
 
@@ -1295,10 +1295,21 @@ export default function ClassDashboard({
           <div style={styles.overlay}>
             <div style={styles.modal}>
               <h3 style={{ marginBottom: 16 }}>Edit Student</h3>
-              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: 16 }}>
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: 16 }}>
                 <SafeAvatar src={editStudentAvatar || (editSelectedSeed ? avatarByCharacter(editSelectedSeed) : boringAvatar(editStudentName || 'anon', 'boy'))} name={editStudentName} alt={editStudentName} style={{ width: 100, height: 100, borderRadius: 50, objectFit: 'cover', background: '#F8FAFC' }} />
                 <div style={{ marginTop: 10 }}><Camera size={14} /></div>
-                <input type="file" accept="image/*" onChange={(e) => { const file = e.target.files?.[0]; if (file) { const reader = new FileReader(); reader.onload = () => { setEditStudentAvatar(reader.result); setEditSelectedSeed(null); }; reader.readAsDataURL(file); } }} style={{ marginTop: 12 }} />
+
+                {/* Styled upload button (matches AddStudentModal style) */}
+                <div style={{ display: 'flex', gap: 8, alignItems: 'center', justifyContent: 'center', marginTop: 12 }}>
+                  <input ref={editFileInputRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={(e) => { const f = e.target.files && e.target.files[0]; if (!f) return; const reader = new FileReader(); reader.onload = () => { setEditStudentAvatar(reader.result); setEditSelectedSeed(null); }; reader.readAsDataURL(f); }} />
+                  <button onClick={() => editFileInputRef.current && editFileInputRef.current.click()} style={{ padding: '10px 14px', borderRadius: '12px', border: 'none', background: '#4CAF50', color: 'white', cursor: 'pointer', fontWeight: 'bold' }}>
+                    {editStudentAvatar ? 'Change Photo' : 'Upload Photo'}
+                  </button>
+                  {editStudentAvatar && (
+                    <button onClick={() => setEditStudentAvatar(null)} style={{ padding: '8px 12px', borderRadius: '12px', border: '1px solid #E2E8F0', background: 'white', cursor: 'pointer' }}>Remove</button>
+                  )}
+                </div>
+
                 <div style={{ marginTop: 12, position: 'relative' }}>
                   <button onClick={() => setShowEditAvatarPicker(!showEditAvatarPicker)} style={{ width: '100%', padding: '12px 16px', border: '1px solid #E2E8F0', borderRadius: '12px', background: '#F8FAFC', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '14px', fontWeight: 500, color: '#475569', transition: 'all 0.2s' }}>
                     <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>{editSelectedSeed ? (<><img src={avatarByCharacter(editSelectedSeed)} alt={editSelectedSeed} style={{ width: 24, height: 24, borderRadius: 4 }} /><span style={{ textTransform: 'capitalize' }}>{editSelectedSeed}</span></>) : ('Choose character...')}</span>
@@ -1321,7 +1332,7 @@ export default function ClassDashboard({
               <input autoFocus placeholder="Student name" value={editStudentName} onChange={(e) => setEditStudentName(e.target.value)} style={{ width: '100%', padding: 12, borderRadius: 8, border: '1px solid #E2E8F0', marginBottom: 12 }} onKeyDown={(e) => e.key === 'Enter' && handleSaveStudentEdit()} />
               <div style={{ display: 'flex', gap: 8 }}>
                 <button onClick={() => { setEditingStudentId(null); setEditStudentName(''); setEditStudentAvatar(null); setEditSelectedSeed(null); }} style={{ flex: 1, padding: 10, borderRadius: 8, border: '1px solid #E2E8F0', background: 'white', cursor: 'pointer' }}>Cancel</button>
-                <button onClick={handleSaveStudentEdit} style={{ flex: 1, padding: 10, borderRadius: 8, border: 'none', background: '#4CAF50', color: 'white' }}>Save</button>
+                <button data-enter-submit onClick={handleSaveStudentEdit} style={{ flex: 1, padding: 10, borderRadius: 8, border: 'none', background: '#4CAF50', color: 'white' }}>Save</button>
               </div>
             </div>
           </div>

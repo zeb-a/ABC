@@ -56,13 +56,17 @@ Changes are saved immediately to the app state.`
 - Validation: empty questions are highlighted and prevent publishing.`
     },
     'Messages & Grading': {
-      title: 'Messages & Grading — Review and grade student submissions',
-      body: `The Messages & Grading shows submitted work on the right and the selected submission for grading on the left.
-
-- Select a pending submission to view answers.
-- Enter a grade in the points field and click **Save Grade & Send** to return feedback.
-- Use the back/close button to return to the dashboard.`
+      title: 'Inbox — Review and grade student submissions',
+      body: `The Inbox page lets you review and grade student work.\n\n
+      - Click the Inbox button to open the sidebar and view all student submissions.\n
+      - Click a submission to view and grade student answers.\n
+      - Enter points in the input, then click the grade button to save and send the grade.\n
+      - Graded submissions move to 'Recently Graded'.\n
+      - Use the Help button for guidance.\n
+      - On mobile, labels appear under icons.\n
+      - Use the Close button to exit the Inbox.`
     },
+      
     'settings': {
       title: 'Settings — Class configuration',
       body: `Customize the class Points cards and roster here.

@@ -69,7 +69,7 @@ export default function LuckyDrawModal({ students, onClose, onWinner, onRequestA
           <h2 style={modalStyles.title}>Not enough students</h2>
           <p style={modalStyles.subtitle}>Add at least 2 students before running a Lucky Draw.</p>
           <div style={{ display: 'flex', gap: 12, justifyContent: 'center' }}>
-            <button onClick={() => { onClose(); onRequestAddStudents && onRequestAddStudents(); }} style={modalStyles.saveBtn}>Add Students</button>
+            <button data-enter-submit onClick={() => { onClose(); onRequestAddStudents && onRequestAddStudents(); }} style={modalStyles.saveBtn}>Add Students</button>
             <button onClick={onClose} style={{ ...modalStyles.numberBtn, padding: '12px 20px' }}>Cancel</button>
           </div>
         </div>
@@ -80,7 +80,7 @@ export default function LuckyDrawModal({ students, onClose, onWinner, onRequestA
           <h2 style={modalStyles.title}>Not enough students</h2>
           <p style={modalStyles.subtitle}>You chose {studentCount} winners but there are only {safeStudents.length} students.</p>
           <div style={{ display: 'flex', gap: 12, justifyContent: 'center' }}>
-            <button onClick={() => setStep('count_selection')} style={modalStyles.saveBtn}>Choose a smaller number</button>
+            <button data-enter-submit onClick={() => setStep('count_selection')} style={modalStyles.saveBtn}>Choose a smaller number</button>
             <button onClick={() => { onClose(); onRequestAddStudents && onRequestAddStudents(); }} style={{ ...modalStyles.numberBtn, padding: '12px 20px' }}>Add Students</button>
           </div>
         </div>
@@ -133,6 +133,7 @@ export default function LuckyDrawModal({ students, onClose, onWinner, onRequestA
               </div>
 
               <button
+                data-enter-submit
                 onClick={() => onWinner(studentCount === 1 ? targetWinners[0] : targetWinners, pointsToGive)}
                 style={modalStyles.saveBtn}
               >

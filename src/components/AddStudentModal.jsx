@@ -139,6 +139,7 @@ export default function AddStudentModal({ onClose, onSave }) {
           {/* CANCEL BUTTON */}
           <button style={styles.cancelBtn} onClick={onClose}>Cancel</button>
           <button
+            data-enter-submit
             style={{
               ...styles.saveBtn,
               opacity: name.trim() ? 1 : 0.6,

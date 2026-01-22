@@ -7,7 +7,12 @@ import { useTranslation } from '../i18n';
 
 export default function InlineHelpModal({ pageId, onClose }) {
   const { lang } = useTranslation();
-  const entry = (HELP_GUIDES && HELP_GUIDES[lang] && HELP_GUIDES[lang][pageId]) || (HELP_GUIDES && HELP_GUIDES['en'] && HELP_GUIDES['en'][pageId]) || { title: 'Help', body: 'No help available for this page.' };
+  // Fallback: if 'inbox' not found, use 'Messages & Grading' (legacy key)
+  let entry = (HELP_GUIDES && HELP_GUIDES[lang] && HELP_GUIDES[lang][pageId]) || (HELP_GUIDES && HELP_GUIDES['en'] && HELP_GUIDES['en'][pageId]);
+  if (!entry && pageId === 'inbox') {
+    entry = (HELP_GUIDES && HELP_GUIDES[lang] && HELP_GUIDES[lang]['Messages & Grading']) || (HELP_GUIDES && HELP_GUIDES['en'] && HELP_GUIDES['en']['Messages & Grading']);
+  }
+  if (!entry) entry = { title: 'Help', body: 'No help available for this page.' };
 
   const node = (
     <div style={styles.overlay} onClick={onClose}>

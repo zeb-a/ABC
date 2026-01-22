@@ -119,7 +119,7 @@ export default function ProfileModal({ user, onSave, onClose }) {
           <input type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="New Password" style={styles.input} />
           <input type="password" value={confirm} onChange={e => setConfirm(e.target.value)} placeholder="Confirm New Password" style={styles.input} />
           {error && <div style={{ color: 'red', textAlign: 'center' }}>{error}</div>}
-          <button type="submit" style={styles.saveBtn} disabled={saving}>{saving ? 'Saving...' : 'Save Changes'}</button>
+          <button data-enter-submit type="submit" style={styles.saveBtn} disabled={saving}>{saving ? 'Saving...' : 'Save Changes'}</button>
         </form>
       </div>
     </div>
