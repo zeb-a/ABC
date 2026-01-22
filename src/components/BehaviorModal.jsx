@@ -1,21 +1,88 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { X, Trophy, AlertTriangle } from 'lucide-react';
 
 import { boringAvatar } from '../utils/avatar';
 import SafeAvatar from './SafeAvatar';
+import api from '../services/api';
 
 export default function BehaviorModal({ student, behaviors, onClose, onGivePoint }) {
   const safeBehaviors = Array.isArray(behaviors) ? behaviors : [];
   
   // Normalize type field - handle both string and array cases
-  const normalizedBehaviors = safeBehaviors.map(b => ({
+  const normalizedBehaviors = React.useMemo(() => safeBehaviors.map(b => ({
     ...b,
     type: Array.isArray(b.type) ? b.type[0] : (typeof b.type === 'string' ? b.type : '')
-  }));
+  })), [behaviors]);
   
   const wowCards = normalizedBehaviors.filter(b => b.type === 'wow');
   const nonoCards = normalizedBehaviors.filter(b => b.type === 'nono');
   const [activeTab, setActiveTab] = React.useState('wow');
+  // Import tab state
+  const [classesList, setClassesList] = useState([]);
+  const [loadingClasses, setLoadingClasses] = useState(false);
+  const [selectedClassId, setSelectedClassId] = useState('');
+  const [importing, setImporting] = useState(false);
+  const [importResult, setImportResult] = useState(null);
+  const [sourceBehaviors, setSourceBehaviors] = useState([]);
+  const [loadingSource, setLoadingSource] = useState(false);
+  const [toImport, setToImport] = useState([]);
+
+  // Fetch classes when import tab is activated
+  useEffect(() => {
+    let mounted = true;
+    const fetchClasses = async () => {
+      setLoadingClasses(true);
+      try {
+        const data = await api.pbRequest('/collections/classes/records');
+        if (!mounted) return;
+        // Expect data.items or data
+        const items = data && data.items ? data.items : (Array.isArray(data) ? data : []);
+        setClassesList(items);
+      } catch (err) {
+        console.error('Failed to fetch classes for import', err);
+        setClassesList([]);
+      } finally {
+        setLoadingClasses(false);
+      }
+    };
+    if (activeTab === 'import') fetchClasses();
+    return () => { mounted = false; };
+  }, [activeTab]);
+
+  // When a source class is selected (and we're on the Import tab), fetch its behaviors and compute preview diff
+  useEffect(() => {
+    let mounted = true;
+    const fetchSource = async () => {
+      if (activeTab !== 'import' || !selectedClassId) {
+        setSourceBehaviors([]);
+        setToImport([]);
+        return;
+      }
+      setLoadingSource(true);
+      try {
+        const src = await api.pbRequest(`/collections/classes/records/${selectedClassId}`);
+        if (!mounted) return;
+        const sb = src?.behaviors || src?.data?.behaviors || [];
+        const items = Array.isArray(sb) ? sb : [];
+        setSourceBehaviors(items);
+        // Normalize existing behaviors for comparison (use id or label)
+        const existingKeys = new Set((normalizedBehaviors || []).map(b => b.id || b.label));
+        const filtered = items.filter(x => {
+          const key = x?.id || x?.label;
+          return key && !existingKeys.has(key);
+        });
+        setToImport(filtered);
+      } catch (err) {
+        console.error('Failed to fetch source class behaviors', err);
+        setSourceBehaviors([]);
+        setToImport([]);
+      } finally {
+        setLoadingSource(false);
+      }
+    };
+    fetchSource();
+    return () => { mounted = false; };
+  }, [selectedClassId, activeTab, normalizedBehaviors]);
 
   return (
     <div style={styles.overlay} onClick={onClose}>
@@ -36,27 +103,109 @@ export default function BehaviorModal({ student, behaviors, onClose, onGivePoint
           <div style={{ display: 'flex', gap: 12, marginBottom: 16, justifyContent: 'center' }}>
             <button onClick={() => setActiveTab('wow')} style={{ padding: '8px 16px', borderRadius: 12, border: activeTab === 'wow' ? '2px solid #4CAF50' : '1px solid #E6EEF2', background: activeTab === 'wow' ? '#E8F5E9' : 'transparent', cursor: 'pointer' }}>WOW CARDS</button>
             <button onClick={() => setActiveTab('nono')} style={{ padding: '8px 16px', borderRadius: 12, border: activeTab === 'nono' ? '2px solid #F44336' : '1px solid #E6EEF2', background: activeTab === 'nono' ? '#FFEBEE' : 'transparent', cursor: 'pointer' }}>NO-NO CARDS</button>
+            <button onClick={() => setActiveTab('import')} style={{ padding: '8px 16px', borderRadius: 12, border: activeTab === 'import' ? '2px solid #2563EB' : '1px solid #E6EEF2', background: activeTab === 'import' ? '#EFF6FF' : 'transparent', cursor: 'pointer' }}>IMPORT</button>
           </div>
 
-          <div style={styles.section}>
-            <div style={styles.buttonGrid} className="behavior-cards-container">
-              {(activeTab === 'wow' ? wowCards : nonoCards).map(card => (
-                <button key={card.id} onClick={() => {
-                  try {
-                    onGivePoint(card);
-                    // Notify onboarding that a behavior was given (if waiting)
-                    window.dispatchEvent(new CustomEvent('onboarding:actionComplete', { detail: { stepId: 'behavior-cards' } }));
-                  } catch (e) {
-                    console.error('onGivePoint failed', e);
-                  }
-                }} style={activeTab === 'wow' ? styles.cardButton : { ...styles.cardButton, borderLeft: '4px solid #F44336' }}>
-                  <div style={{fontSize: '2.2rem', marginBottom: '5px'}}>{card.icon}</div>
-                  <div style={{fontWeight: 'bold', fontSize: '0.9rem'}}>{card.label}</div>
-                  <div style={{color: activeTab === 'wow' ? '#4CAF50' : '#F44336', fontWeight: '900'}}>{activeTab === 'wow' ? `+${card.pts}` : card.pts}</div>
-                </button>
-              ))}
+          {/* Show cards for wow/nono, or the import panel when import tab is active */}
+          {activeTab !== 'import' ? (
+            <div style={styles.section}>
+              <div style={styles.buttonGrid} className="behavior-cards-container">
+                {(activeTab === 'wow' ? wowCards : nonoCards).map(card => (
+                  <button key={card.id} onClick={() => {
+                    try {
+                      onGivePoint(card);
+                      // Notify onboarding that a behavior was given (if waiting)
+                      window.dispatchEvent(new CustomEvent('onboarding:actionComplete', { detail: { stepId: 'behavior-cards' } }));
+                    } catch (e) {
+                      console.error('onGivePoint failed', e);
+                    }
+                  }} style={activeTab === 'wow' ? styles.cardButton : { ...styles.cardButton, borderLeft: '4px solid #F44336' }}>
+                    <div style={{fontSize: '2.2rem', marginBottom: '5px'}}>{card.icon}</div>
+                    <div style={{fontWeight: 'bold', fontSize: '0.9rem'}}>{card.label}</div>
+                    <div style={{color: activeTab === 'wow' ? '#4CAF50' : '#F44336', fontWeight: '900'}}>{activeTab === 'wow' ? `+${card.pts}` : card.pts}</div>
+                  </button>
+                ))}
+              </div>
             </div>
-          </div>
+          ) : (
+            <div style={{ padding: '20px 30px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+              <div style={{ display: 'flex', gap: 12, alignItems: 'center', justifyContent: 'center' }}>
+                <div style={{ minWidth: 320 }}>
+                  <label style={{ display: 'block', marginBottom: 8, color: '#475569', fontWeight: 700 }}>Select class to import from</label>
+                  <select value={selectedClassId} onChange={(e) => setSelectedClassId(e.target.value)} style={{ width: '100%', padding: '10px 12px', borderRadius: 10, border: '1px solid #E2E8F0' }}>
+                    <option value="">-- Choose a class --</option>
+                    {classesList.map(cls => (
+                      <option key={cls.id} value={cls.id}>{cls.name || cls.title || cls.id}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              {/* Preview area */}
+              <div style={{ marginTop: 12, minHeight: 80 }}>
+                {loadingSource ? (
+                  <div style={{ textAlign: 'center', color: '#64748B' }}>Loading preview…</div>
+                ) : (
+                  <>
+                    <div style={{ textAlign: 'center', marginBottom: 8, color: '#334155', fontWeight: 700 }}>
+                      {toImport.length > 0 ? `Preview — ${toImport.length} new card(s) will be imported` : 'No new cards to import from selected class'}
+                    </div>
+                    {toImport.length > 0 && (
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 10 }}>
+                        {toImport.map((c) => (
+                          <div key={c.id || c.label} style={{ background: 'white', border: '1px solid #E6EEF2', borderRadius: 12, padding: 10, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                            <div style={{ fontSize: '1.6rem', marginBottom: 6 }}>{c.icon || '⭐'}</div>
+                            <div style={{ fontWeight: 700 }}>{c.label}</div>
+                            <div style={{ color: '#475569', fontWeight: 800 }}>{c.pts ? (c.pts > 0 ? `+${c.pts}` : c.pts) : ''}</div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </>
+                )}
+              </div>
+
+              <div style={{ display: 'flex', justifyContent: 'center', marginTop: 12 }}>
+                <button
+                  onClick={async () => {
+                    if (!selectedClassId) return;
+                    setImporting(true);
+                    setImportResult(null);
+                    try {
+                      // Use the previewed toImport list for import (already filtered)
+                      const payload = toImport.length > 0 ? toImport : sourceBehaviors;
+                      window.dispatchEvent(new CustomEvent('behavior-import:request', { detail: { sourceClassId: selectedClassId, sourceBehaviors: payload } }));
+                      setImportResult({ success: true, imported: (payload || []).length });
+                    } catch (err) {
+                      console.error('Import failed', err);
+                      setImportResult({ success: false, message: err.message || 'Failed to import' });
+                    } finally {
+                      setImporting(false);
+                    }
+                  }}
+                  disabled={!selectedClassId || importing || loadingSource}
+                  style={{
+                    padding: '12px 22px',
+                    background: selectedClassId && toImport.length > 0 ? '#4CAF50' : '#CBD5E1',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: 12,
+                    fontWeight: 800,
+                    cursor: selectedClassId && toImport.length > 0 ? 'pointer' : 'not-allowed',
+                    boxShadow: selectedClassId && toImport.length > 0 ? '0 12px 30px rgba(76,175,80,0.18)' : 'none'
+                  }}
+                >
+                  {importing ? 'Importing…' : (toImport.length > 0 ? 'Import New Cards' : 'Nothing to Import')}
+                </button>
+              </div>
+
+              {importResult && (
+                <div style={{ textAlign: 'center', marginTop: 12, color: importResult.success ? '#166534' : '#991b1b' }}>
+                  {importResult.success ? `Imported ${importResult.imported} behavior(s) (source). Parent will merge unique cards.` : `Import failed: ${importResult.message}`}
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </div>
     </div>

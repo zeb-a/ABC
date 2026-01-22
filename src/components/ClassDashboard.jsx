@@ -31,14 +31,30 @@ const SidebarIcon = ({ icon: Icon, label, onClick, isActive, badge, style }) => 
 
   return (
     <div
-      style={{ position: 'relative', display: 'flex', justifyContent: 'center', width: '100%', padding: '10px 0', boxSizing: 'border-box' }}
+      style={{ position: 'relative', display: 'flex', justifyContent: 'center', width: '100%', padding: '6px 0', boxSizing: 'border-box' }}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
     >
-      <Icon
+      <div
         onClick={onClick}
-        style={{ ...style, color: isActive ? '#4CAF50' : style?.color || '#636E72' }}
-      />
+        role="button"
+        tabIndex={0}
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          width: 40,
+          height: 40,
+          borderRadius: 10,
+          background: hovered ? '#F8FAFC' : 'transparent',
+          boxShadow: hovered ? '0 8px 20px rgba(2,6,23,0.08)' : 'none',
+          transform: hovered ? 'translateY(-3px) scale(1.03)' : 'translateY(0) scale(1)',
+          transition: 'all 180ms ease',
+          cursor: 'pointer'
+        }}
+      >
+        <Icon style={{ ...style, color: isActive ? '#4CAF50' : style?.color || '#636E72' }} />
+      </div>
       {badge}
       {hovered && (
         <div style={{
@@ -62,6 +78,80 @@ const SidebarIcon = ({ icon: Icon, label, onClick, isActive, badge, style }) => 
     </div>
   );
 };
+
+  // Reusable icon button with hover tooltip (for header controls)
+const IconButton = React.forwardRef(({ title, onClick, children, style }, ref) => {
+  const [hovered, setHovered] = React.useState(false);
+  const [tooltipPos, setTooltipPos] = React.useState({ left: 0, top: 0 });
+  const localRef = React.useRef(null);
+
+  // support forwarded ref while keeping a local ref for measurements
+  const setRefs = (el) => {
+    localRef.current = el;
+    if (!ref) return;
+    if (typeof ref === 'function') ref(el); else ref.current = el;
+  };
+
+  const baseStyle = {
+    background: '#fff',
+    color: '#475569',
+    boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)',
+    border: '1px solid #E2E8F0',
+    width: 48,
+    height: 44,
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 12,
+    cursor: 'pointer',
+    transition: 'all 180ms ease',
+    ...style
+  };
+
+  const hoverStyle = hovered ? { background: '#F8FAFC', transform: 'translateY(-2px)', boxShadow: '0 10px 28px rgba(2,6,23,0.08)' } : {};
+
+  const handleMouseEnter = () => {
+    const el = localRef.current;
+    if (el && el.getBoundingClientRect) {
+      const rect = el.getBoundingClientRect();
+      setTooltipPos({ left: rect.left + rect.width / 2, top: rect.bottom + 8 });
+    }
+    setHovered(true);
+  };
+
+  const handleMouseLeave = () => setHovered(false);
+
+  return (
+    <div style={{ position: 'relative', display: 'inline-flex' }}>
+      <button
+        ref={setRefs}
+        onClick={onClick}
+        onMouseEnter={handleMouseEnter}
+        onMouseLeave={handleMouseLeave}
+        style={{ ...baseStyle, ...hoverStyle }}
+      >
+        {children}
+      </button>
+      {hovered && (
+        <div style={{
+          position: 'fixed',
+          left: tooltipPos.left,
+          top: tooltipPos.top,
+          transform: 'translateX(-50%)',
+          background: '#2D3436',
+          color: 'white',
+          padding: '6px 10px',
+          borderRadius: 8,
+          zIndex: 99999,
+          whiteSpace: 'nowrap',
+          fontSize: 12,
+          pointerEvents: 'none',
+          boxShadow: '0 6px 18px rgba(0,0,0,0.12)'
+        }}>{title}</div>
+      )}
+    </div>
+  );
+});
 export default function ClassDashboard({
   activeClass,
   behaviors,
@@ -71,6 +161,24 @@ export default function ClassDashboard({
   updateClasses,
   onOpenAssignments
 }) {
+  // Handler to merge imported behaviors from another class into the active class.
+  // Listens for the custom event dispatched by BehaviorModal when the user requests an import.
+  useEffect(() => {
+    const handler = (e) => {
+      const { sourceBehaviors } = e.detail || {};
+      if (!sourceBehaviors || !Array.isArray(sourceBehaviors) || !activeClass) return;
+      // Merge: only add behaviors that don't already exist (by id or label)
+      updateClasses(prev => prev.map(c => {
+        if (c.id !== activeClass.id) return c;
+        const existingKeys = new Set((c.behaviors || []).map(b => b.id || b.label));
+        const toAdd = sourceBehaviors.filter(sb => !(existingKeys.has(sb.id) || existingKeys.has(sb.label)));
+        if (toAdd.length === 0) return c;
+        return { ...c, behaviors: [...(c.behaviors || []), ...toAdd] };
+      }));
+    };
+    window.addEventListener('behavior-import:request', handler);
+    return () => window.removeEventListener('behavior-import:request', handler);
+  }, [activeClass, updateClasses]);
   const [isLuckyDrawOpen, setIsLuckyDrawOpen] = useState(false);
   const [isAddStudentOpen, setIsAddStudentOpen] = useState(false);
   const [selectedStudent, setSelectedStudent] = useState(null);
@@ -480,14 +588,14 @@ export default function ClassDashboard({
     // Trigger animation for winners
     try { triggerAnimationForIds(studentsArray.map(w => w.id), points); } catch (e) { console.warn('triggerAnimationForIds failed', e); }
   };
-  if (!activeClass) return <div style={styles.layout}>No class selected</div>;
+  if (!activeClass) return <div style={{ ...styles.layout, overflowX: 'hidden' }}>No class selected</div>;
   // Sum up all points from all students safely
   const totalClassPoints = activeClass?.students?.reduce((acc, s) => acc + (Number(s.score) || 0), 0) || 0;
   // --- CONDITIONAL RENDERS FOR SUB-PAGES ---
 
   return (
     <>
-      <div style={styles.layout}>
+      <div style={{ ...styles.layout, overflowX: 'hidden' }}>
         <style>{`
           @keyframes pulseChevron { 
             0% { transform: translateY(0) scale(1); }
@@ -499,7 +607,7 @@ export default function ClassDashboard({
         <nav
           style={(() => {
             if (isMobile) {
-              // On mobile: render a narrow left aside with better spacing
+              // On mobile: render a narrow left aside with tighter spacing so bottom icons remain visible
               return {
                 position: 'fixed',
                 left: 0,
@@ -511,9 +619,9 @@ export default function ClassDashboard({
                 flexDirection: 'column',
                 justifyContent: 'flex-start',
                 alignItems: 'center',
-                gap: '18px',
-                padding: '20px 8px',
-                background: '#fff',
+                gap: '8px',
+                padding: '10px 6px',
+                background: '#EEF2FF',
                 transform: sidebarVisible ? 'translateX(0)' : 'translateX(-100%)',
                 transition: 'transform 0.25s ease',
                 boxShadow: sidebarVisible ? '0 0 20px rgba(0,0,0,0.06)' : 'none',
@@ -541,24 +649,24 @@ export default function ClassDashboard({
 
           <SidebarIcon
             icon={Home}
-            label="Back to Dashboard"
+            label="Back to Dashboard (Return to main dashboard)"
             onClick={() => { onBack(); setViewMode('dashboard'); }}
             style={styles.icon}
           />
 
           <SidebarIcon
             icon={ClipboardList}
-            label="Assignments"
-            onClick={() => setViewMode('assignments')} // Change this
-            isActive={viewMode === 'assignments'}      // Change this
+            label="Open Assignments"
+            onClick={() => setViewMode('assignments')}
+            isActive={viewMode === 'assignments'}
           />
 
           <SidebarIcon
             icon={MessageSquare}
-            label="Messages & Grading"
+            label="Messages & Grading (Inbox)"
             onClick={() => {
-              setViewMode('messages');      // 1. Switch the view mode
-              fetchFreshSubmissions();     // 2. Refresh data from PocketBase
+              setViewMode('messages');
+              fetchFreshSubmissions();
             }}
             isActive={viewMode === 'messages'}
             style={styles.icon}
@@ -575,28 +683,26 @@ export default function ClassDashboard({
 
           <SidebarIcon
             icon={Dices}
-            label="Lucky Draw"
+            label="Open Lucky Draw"
             onClick={() => { setViewMode('dashboard'); setIsLuckyDrawOpen(true); }}
             style={styles.icon}
           />
 
           <SidebarIcon
             icon={Trophy}
-            label="Progess Road"
+            label="Progress Road"
             onClick={onOpenEggRoad}
             style={styles.icon}
           />
 
           <SidebarIcon
             icon={CheckSquare}
-            label="Attendance"
+            label="Toggle Attendance Mode"
             onClick={() => {
               if (!isAttendanceMode) {
-                // Ensure student cards are visible when entering attendance mode
                 setViewMode('dashboard');
                 setIsAttendanceMode(true);
               } else {
-                // Clicking again exits attendance mode
                 setIsAttendanceMode(false);
               }
             }}
@@ -608,10 +714,10 @@ export default function ClassDashboard({
 
           <SidebarIcon
             icon={QrCode}
-            label="Access Codes"
+            label="Manage Access Codes"
             onClick={() => {
-              ensureCodesAndOpen(); // This handles logic
-              setViewMode('codes'); // This handles the view
+              ensureCodesAndOpen();
+              setViewMode('codes');
             }}
             isActive={viewMode === 'codes'}
             style={styles.icon}
@@ -619,7 +725,7 @@ export default function ClassDashboard({
 
           <SidebarIcon
             icon={BarChart2}
-            label="Reports"
+            label="View Reports"
             onClick={() => {
               setViewMode('reports');
               updateClasses(prev => prev.map(c => c.id === activeClass.id ? { ...c, isViewingReports: true } : c));
@@ -629,28 +735,28 @@ export default function ClassDashboard({
           />
           <SidebarIcon
             icon={Clock}
-            label="Class Timer"
+            label="Open Class Timer"
             onClick={() => setViewMode('timer')}
             isActive={viewMode === 'timer'}
             style={styles.icon}
           />
           <SidebarIcon
             icon={Siren}
-            label="Attention Buzzer"
+            label="Start Attention Buzzer"
             onClick={startBuzzerSequence}
             style={{ ...styles.icon, color: buzzerState !== 'idle' ? '#FF5252' : '#636E72' }}
           />
           <SidebarIcon
             icon={Presentation}
-            label="Whiteboard"
+            label="Open Whiteboard"
             onClick={() => setShowWhiteboard(true)}
             style={styles.icon}
           />
           <SidebarIcon
             icon={Settings}
-            label="Settings"
-            onClick={() => setViewMode('settings')} // Change this
-            isActive={viewMode === 'settings'}     // Change this
+            label="Open Settings"
+            onClick={() => setViewMode('settings')}
+            isActive={viewMode === 'settings'}
             style={styles.icon}
           />
 
@@ -777,7 +883,15 @@ export default function ClassDashboard({
 
           </div>
         )}
-        <main style={{ ...styles.content, marginLeft: sidebarVisible ? (isMobile ? '72px' : '80px') : '0', transition: 'margin-left 0.3s ease', paddingBottom: isMobile ? '32px' : undefined }}>
+        <main style={{
+          ...styles.content,
+          marginLeft: sidebarVisible ? (isMobile ? '72px' : '80px') : '0',
+          transition: 'margin-left 0.3s ease',
+          paddingBottom: isMobile ? '32px' : undefined,
+          overflowX: 'hidden',
+          maxWidth: '100%',
+          boxSizing: 'border-box'
+        }}>
 
           {/* 1. MESSAGES VIEW */}
           {viewMode === 'messages' ? (
@@ -874,7 +988,19 @@ export default function ClassDashboard({
                 /* 3. STANDARD DASHBOARD VIEW (Default) */
 
                 <>
-                  <header style={{ ...styles.header, padding: isMobile ? '8px 12px' : styles.header.padding, marginLeft: isMobile ? '8px' : styles.header.marginLeft, flexDirection: 'row', alignItems: 'flex-start' }}>
+                  <header
+                    style={{
+                      ...styles.header,
+                      // Use full width of the `main` container; `main` already offsets for the sidebar.
+                      width: '100%',
+                      padding: isMobile ? '8px 12px' : styles.header.padding,
+                      marginLeft: 0,
+                      paddingRight: isMobile ? '12px' : '20px',
+                      boxSizing: 'border-box',
+                      flexDirection: 'row',
+                      alignItems: 'flex-start'
+                    }}
+                  >
                     <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                         <h2 style={{ fontSize: '1.5rem', fontWeight: 900, color: '#0F172A', margin: 0 }}>
@@ -891,147 +1017,92 @@ export default function ClassDashboard({
 
                     </div>
 
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-                      <div style={{ position: 'relative' }}>
-                        <button
-                          ref={sortBtnRef}
-                          onClick={() => setShowSortMenu(prev => { const next = !prev; if (next) setShowGridMenu(false); return next; })}
-                          onMouseEnter={(e) => e.currentTarget.style.background = '#F8FAFC'}
-                          onMouseLeave={(e) => e.currentTarget.style.background = '#fff'}
-                          style={{
-                            background: '#fff',
-                            color: '#475569',
-                            boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)',
-                            border: '1px solid #E2E8F0',
-                            width: 48,
-                            height: 44,
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            borderRadius: 12,
-                            cursor: 'pointer'
-                          }}
-                          title="Sort"
-                        >
-                          <ArrowUpDown size={22} />
-                        </button>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                              <div style={{ position: 'relative' }}>
+                                <IconButton ref={sortBtnRef} title="Sort Students" onClick={() => setShowSortMenu(prev => { const next = !prev; if (next) setShowGridMenu(false); return next; })}>
+                                  <ArrowUpDown size={22} />
+                                </IconButton>
 
-                        {showSortMenu && (
-                          <div style={styles.gridMenu} ref={sortMenuRef}> {/* Re-uses your existing menu style */}
-                            <div style={{ padding: '8px 16px', fontSize: '11px', fontWeight: 900, color: '#94A3B8', textTransform: 'uppercase', letterSpacing: '1px' }}>Sort By</div>
+                                {showSortMenu && (
+                                  <div style={styles.gridMenu} ref={sortMenuRef}> {/* Re-uses your existing menu style */}
+                                    <div style={{ padding: '8px 12px', fontSize: '11px', fontWeight: 900, color: '#94A3B8', textTransform: 'uppercase', letterSpacing: '1px' }}>Sort By</div>
 
-                            <button
-                              onClick={() => { setSortBy('name'); setShowSortMenu(false); }}
-                              onMouseEnter={(e) => e.currentTarget.style.background = '#F8FAFC'}
-                              onMouseLeave={(e) => e.currentTarget.style.background = sortBy === 'name' ? '#EEF2FF' : 'transparent'}
-                              style={{
-                                ...styles.gridOption,
-                                background: sortBy === 'name' ? '#EEF2FF' : 'transparent',
-                                color: sortBy === 'name' ? '#6366F1' : '#475569'
-                              }}
-                            >
-                              Name (A-Z)
-                              {sortBy === 'name' && <CheckCircle size={16} />}
-                            </button>
+                                    <button
+                                      onClick={() => { setSortBy('name'); setShowSortMenu(false); }}
+                                      onMouseEnter={(e) => e.currentTarget.style.background = '#F8FAFC'}
+                                      onMouseLeave={(e) => e.currentTarget.style.background = sortBy === 'name' ? '#EEF2FF' : 'transparent'}
+                                      style={{
+                                        ...styles.gridOption,
+                                        background: sortBy === 'name' ? '#EEF2FF' : 'transparent',
+                                        color: sortBy === 'name' ? '#6366F1' : '#475569'
+                                      }}
+                                    >
+                                      Name (A-Z)
+                                      {sortBy === 'name' && <CheckCircle size={16} />}
+                                    </button>
 
-                            <button
-                              onClick={() => { setSortBy('score'); setShowSortMenu(false); }}
-                              onMouseEnter={(e) => e.currentTarget.style.background = '#F8FAFC'}
-                              onMouseLeave={(e) => e.currentTarget.style.background = sortBy === 'score' ? '#EEF2FF' : 'transparent'}
-                              style={{
-                                ...styles.gridOption,
-                                background: sortBy === 'score' ? '#EEF2FF' : 'transparent',
-                                color: sortBy === 'score' ? '#6366F1' : '#475569'
-                              }}
-                            >
-                              Highest Points
-                              {sortBy === 'score' && <CheckCircle size={16} />}
-                            </button>
-                          </div>
-                        )}
-                      </div>
-                      {/* Layout / Grid Menu */}
-                      <div style={{ position: 'relative' }}>
-                        <button
-                          ref={gridBtnRef}
-                          onClick={() => setShowGridMenu(prev => { const next = !prev; if (next) setShowSortMenu(false); return next; })}
-                          onMouseEnter={(e) => e.currentTarget.style.background = '#F8FAFC'}
-                          onMouseLeave={(e) => e.currentTarget.style.background = '#fff'}
-                          style={{
-                            background: '#fff',
-                            color: '#475569',
-                            boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)',
-                            border: '1px solid #E2E8F0',
-                            width: 48,
-                            height: 44,
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            borderRadius: 12,
-                            cursor: 'pointer'
-                          }}
-                          title="Layout"
-                        >
-                          <Sliders size={22} />
-                        </button>
+                                    <button
+                                      onClick={() => { setSortBy('score'); setShowSortMenu(false); }}
+                                      onMouseEnter={(e) => e.currentTarget.style.background = '#F8FAFC'}
+                                      onMouseLeave={(e) => e.currentTarget.style.background = sortBy === 'score' ? '#EEF2FF' : 'transparent'}
+                                      style={{
+                                        ...styles.gridOption,
+                                        background: sortBy === 'score' ? '#EEF2FF' : 'transparent',
+                                        color: sortBy === 'score' ? '#6366F1' : '#475569'
+                                      }}
+                                    >
+                                      Highest Points
+                                      {sortBy === 'score' && <CheckCircle size={16} />}
+                                    </button>
+                                  </div>
+                                )}
+                              </div>
+                              {/* Layout / Grid Menu */}
+                              <div style={{ position: 'relative' }}>
+                                <IconButton ref={gridBtnRef} title="Change Display Size" onClick={() => setShowGridMenu(prev => { const next = !prev; if (next) setShowSortMenu(false); return next; })}>
+                                  <Sliders size={22} />
+                                </IconButton>
 
-                        {showGridMenu && (
-                          <div style={styles.gridMenu} ref={gridMenuRef}>
-                            <div style={{ padding: '6px 12px', fontSize: '11px', fontWeight: 900, color: '#94A3B8', textTransform: 'uppercase', letterSpacing: '1px' }}>Display Size</div>
-                            {[
-                              { key: 'compact', label: 'Compact' },
-                              { key: 'regular', label: 'Regular' },
-                              { key: 'spacious', label: 'Spacious' }
-                            ].map(({ key, label }) => (
-                              <button
-                                key={key}
-                                onClick={() => { setDisplaySize(key); setShowGridMenu(false); }}
-                                onMouseEnter={(e) => {
-                                  e.currentTarget.style.background = '#F8FAFC';
-                                  e.currentTarget.style.transform = 'translateX(4px)';
-                                }}
-                                onMouseLeave={(e) => {
-                                  e.currentTarget.style.background = displaySize === key ? '#EEF2FF' : 'transparent';
-                                  e.currentTarget.style.transform = 'translateX(0)';
-                                }}
-                                style={{
-                                  ...styles.gridOption,
-                                  padding: '10px 12px',
-                                  background: displaySize === key ? '#EEF2FF' : 'transparent',
-                                  color: displaySize === key ? '#6366F1' : '#475569'
-                                }}
-                              >
-                                {label}
-                                {displaySize === key && <CheckCircle size={16} />}
-                              </button>
+                                {showGridMenu && (
+                                  <div style={styles.gridMenu} ref={gridMenuRef}>
+                                    <div style={{ padding: '6px 12px', fontSize: '11px', fontWeight: 900, color: '#94A3B8', textTransform: 'uppercase', letterSpacing: '1px' }}>Display Size</div>
+                                    {[
+                                      { key: 'compact', label: 'Compact' },
+                                      { key: 'regular', label: 'Regular' },
+                                      { key: 'spacious', label: 'Spacious' }
+                                    ].map(({ key, label }) => (
+                                      <button
+                                        key={key}
+                                        onClick={() => { setDisplaySize(key); setShowGridMenu(false); }}
+                                        onMouseEnter={(e) => {
+                                          e.currentTarget.style.background = '#F8FAFC';
+                                          e.currentTarget.style.transform = 'translateX(4px)';
+                                        }}
+                                        onMouseLeave={(e) => {
+                                          e.currentTarget.style.background = displaySize === key ? '#EEF2FF' : 'transparent';
+                                          e.currentTarget.style.transform = 'translateX(0)';
+                                        }}
+                                        style={{
+                                          ...styles.gridOption,
+                                          padding: '10px 12px',
+                                          background: displaySize === key ? '#EEF2FF' : 'transparent',
+                                          color: displaySize === key ? '#6366F1' : '#475569'
+                                        }}
+                                      >
+                                        {label}
+                                        {displaySize === key && <CheckCircle size={16} />}
+                                      </button>
 
-                            ))}
-                          </div>
-                        )}
-                      </div>
+                                    ))}
+                                  </div>
+                                )}
+                              </div>
 
 
-                      <button
-                        onClick={toggleFullscreen}
-                        onMouseEnter={(e) => { e.currentTarget.style.background = '#F8FAFC'; }}
-                        onMouseLeave={(e) => { e.currentTarget.style.background = '#fff'; }}
-                        style={{
-                          background: '#fff',
-                          color: isFullscreen ? '#6366F1' : '#475569',
-                          border: '1px solid #E2E8F0',
-                          width: 48,
-                          height: 44,
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          borderRadius: 12,
-                          cursor: 'pointer'
-                        }}
-                        title={isFullscreen ? "Exit Fullscreen" : "Enter Fullscreen"}
-                      >
-                        {isFullscreen ? <Minimize size={22} /> : <Maximize size={22} />}
-                      </button>
-                    </div>
+                              <IconButton title={isFullscreen ? 'Exit Fullscreen' : 'Enter Fullscreen'} onClick={toggleFullscreen}>
+                                {isFullscreen ? <Minimize size={22} /> : <Maximize size={22} />}
+                              </IconButton>
+                            </div>
 
                   </header>
 
@@ -1277,8 +1348,8 @@ const styles = {
     display: 'flex',
     justifyContent: 'space-between',
     alignItems: 'center',
-    maxWidth: '1200px', // Constrain width for symmetry
-    marginLeft: '16px',
+    maxWidth: 'none',
+    marginLeft: '0',
     width: '100%',
     borderRadius: '24px',
     border: '1px solid rgba(226, 232, 240, 0.8)',
@@ -1305,6 +1376,8 @@ const styles = {
     transform: 'translateY(0)'
     , justifyContent: 'center',
   },
+
+  sidebar: { width: '80px', background: '#EEF2FF', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px', padding: '8px 0', borderRight: '1px solid rgba(0,0,0,0.06)' },
 
   gridMenu: {
     position: 'absolute',
