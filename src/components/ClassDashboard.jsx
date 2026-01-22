@@ -259,6 +259,9 @@ export default function ClassDashboard({
   const gridBtnRef = useRef(null);
   const sortMenuRef = useRef(null);
   const gridMenuRef = useRef(null);
+  // Refs for sidebar and its toggle chevron so outside clicks can hide the aside
+  const sidebarRef = useRef(null);
+  const chevronRef = useRef(null);
 
   // ⚡ NEW: Helper to get students in the correct order
   const getSortedStudents = () => {
@@ -297,6 +300,23 @@ export default function ClassDashboard({
     document.addEventListener('click', onDocClick);
     return () => document.removeEventListener('click', onDocClick);
   }, [showSortMenu, showGridMenu]);
+
+  // Hide the sidebar/aside when clicking anywhere outside it (but not when clicking the chevron toggle)
+  useEffect(() => {
+    const onAnyClick = (e) => {
+      const target = e.target;
+      // Only consider hiding when aside is currently visible
+      if (!sidebarVisible) return;
+      // If click inside the sidebar, do nothing
+      if (sidebarRef.current && sidebarRef.current.contains(target)) return;
+      // If click on the chevron/toggle button, do nothing (the button's onClick handles toggling)
+      if (chevronRef.current && chevronRef.current.contains(target)) return;
+      // Otherwise hide the sidebar
+      setSidebarVisible(false);
+    };
+    document.addEventListener('click', onAnyClick);
+    return () => document.removeEventListener('click', onAnyClick);
+  }, [sidebarVisible]);
   // --- BUZZER STATE ---
   const [buzzerState, setBuzzerState] = useState('idle'); // 'idle', 'counting', 'buzzing'
   const [buzzerCount, setBuzzerCount] = useState(5);
@@ -605,6 +625,7 @@ export default function ClassDashboard({
         `}</style>
         {/* --- SIDEBAR --- */}
         <nav
+          ref={sidebarRef}
           style={(() => {
             if (isMobile) {
               // On mobile: render a narrow left aside with tighter spacing so bottom icons remain visible
@@ -774,7 +795,9 @@ export default function ClassDashboard({
           `}</style>
 
           <button
-            onClick={() => setSidebarVisible(!sidebarVisible)}
+            ref={chevronRef}
+            onMouseDown={(e) => e.stopPropagation()} // prevent document listener from firing on click
+            onClick={(e) => { e.stopPropagation(); setSidebarVisible(prev => !prev); }}
             style={(() => {
               if (isMobile) {
                 // Mobile: chevron sits at the left and retracts to the far left when aside is hidden

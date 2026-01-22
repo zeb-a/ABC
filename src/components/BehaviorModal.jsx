@@ -88,14 +88,24 @@ export default function BehaviorModal({ student, behaviors, onClose, onGivePoint
     <div style={styles.overlay} onClick={onClose}>
       <div style={styles.modalCard} onClick={e => e.stopPropagation()}>
         <div style={styles.header}>
-          <button style={styles.closeBtn} onClick={onClose}><X size={24} /></button>
-          <div style={styles.studentInfo}>
+          <button
+            style={styles.closeBtn}
+            onClick={(e) => { e.stopPropagation(); onClose(); }}
+            onMouseDown={(e) => e.stopPropagation()}
+            aria-label="Close"
+          >
+            <X size={24} />
+          </button>
+          <div style={{ position: 'relative', width: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+            <div style={{ position: 'absolute', left: 1, top: 1, textTransform: 'uppercase', fontWeight: 900, color: '#ba3d3dff', fontSize: 13, letterSpacing: 0.6 }}>Give Points</div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
+              <h2 style={styles.studentName}>{student.name}</h2>
               <div style={styles.avatarWrapper}>
-              <SafeAvatar src={student.avatar || boringAvatar(student.name, student.gender)} name={student.name} alt={student.name} style={styles.avatar} />
-              <div style={styles.scoreBadge}>{student.score}</div>
+                <SafeAvatar src={student.avatar || boringAvatar(student.name, student.gender)} name={student.name} alt={student.name} style={styles.avatar} />
+                <div style={styles.scoreBadge}>{student.score}</div>
+              </div>
             </div>
-            <h2 style={styles.studentName}>{student.name}</h2>
-            <p style={{color: '#ba3d3dff', margin: '5px 0 0', fontSize:'18px', fontWeight:'700'}}>Give Points</p>
           </div>
         </div>
 
@@ -201,7 +211,13 @@ export default function BehaviorModal({ student, behaviors, onClose, onGivePoint
 
               {importResult && (
                 <div style={{ textAlign: 'center', marginTop: 12, color: importResult.success ? '#166534' : '#991b1b' }}>
-                  {importResult.success ? `Imported ${importResult.imported} behavior(s) (source). Parent will merge unique cards.` : `Import failed: ${importResult.message}`}
+                  {importResult.success ? (
+                    importResult.imported && importResult.imported > 0 ?
+                      `Imported ${importResult.imported} new card${importResult.imported > 1 ? 's' : ''}.` :
+                      `You're all set — no new cards to import.`
+                  ) : (
+                    `Import failed: ${importResult.message}`
+                  )}
                 </div>
               )}
             </div>
@@ -215,14 +231,14 @@ export default function BehaviorModal({ student, behaviors, onClose, onGivePoint
 const styles = {
   overlay: { position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(8px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 5000 },
   modalCard: { background: '#FFFFFF', width: '90%', maxWidth: '650px', borderRadius: '40px', overflow: 'hidden', display: 'flex', flexDirection: 'column', maxHeight: '85vh', boxShadow: '0 30px 60px rgba(0,0,0,0.3)' },
-  header: { padding: '40px 30px 20px', textAlign: 'center', position: 'relative', borderBottom: '1px solid #F0F0F0' },
-  closeBtn: { position: 'absolute', top: '20px', right: '20px', background: 'none', border: 'none', cursor: 'pointer', color: '#999' },
+  header: { padding: '18px 24px', position: 'relative', borderBottom: '1px solid #F0F0F0' },
+  closeBtn: { position: 'absolute', top: '8px', right: '8px', background: 'none', border: 'none', cursor: 'pointer', color: '#999', zIndex: 12000, padding: 8, borderRadius: 8, width: 40, height: 40, display: 'flex', alignItems: 'center', justifyContent: 'center' },
   studentInfo: { display: 'flex', flexDirection: 'column', alignItems: 'center' },
   avatarWrapper: { position: 'relative', marginBottom: '10px' },
-  avatar: { width: '100px', height: '100px', borderRadius: '50%', border: '4px solid #F4F1EA', objectFit: 'cover' },
+  avatar: { width: '84px', height: '84px', borderRadius: '50%', border: '4px solid #F4F1EA', objectFit: 'cover' },
   scoreBadge: { position: 'absolute', bottom: '0', right: '0', background: '#4CAF50', color: 'white', width: '35px', height: '35px', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', border: '3px solid white' },
-  studentName: { margin: '0', fontSize: '1.8rem', fontWeight: '800', color: '#2D3436' },
-  contentScroll: { padding: '30px', overflowY: 'auto', flex: 1 },
+  studentName: { margin: '0 0 8px 0', fontSize: '1.2rem', fontWeight: '800', color: '#2D3436' },
+  contentScroll: { padding: '18px 30px', overflowY: 'auto', flex: 1 },
   buttonGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(135px, 1fr))', gap: '15px' },
   cardButton: { background: 'white', border: '1px solid #E0E0E0', borderLeft: '5px solid #4CAF50', borderRadius: '20px', padding: '20px 10px', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', transition: 'transform 0.2s' }
 };
