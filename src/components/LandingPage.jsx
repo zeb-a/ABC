@@ -293,16 +293,14 @@ export default function LandingPage({ onLoginSuccess, classes, setClasses, refre
 
       {/* --- NAVBAR --- */}
       <nav style={{ ...modernStyles.nav, ...(isMobile ? modernStyles.navMobile : {}) }}>
-        <div style={modernStyles.logo}>
+        <div style={{ ...modernStyles.logo, ...(isMobile ? { maxWidth: '150px' } : {}) }}>
           <ClassABCLogo />
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+        <div style={{ ...modernStyles.navActions, ...(isMobile ? { gap: '8px' } : {}) }}>
           <LanguageSelector />
-          <div style={modernStyles.navActions}>
-            <button className="lp-nav-link" onClick={showSearchGuide} style={{ ...modernStyles.loginLink, marginRight: 8 }}>{t('nav.help')}</button>
-            <button className="lp-nav-link" onClick={() => setModalMode('role')} style={modernStyles.loginLink}>{t('nav.login')}</button>
-            <button className="lp-signup-btn" onClick={() => setModalMode('signup')} style={{ ...modernStyles.signupBtn, ...(isMobile ? modernStyles.signupBtnMobile : {}) }}>{t('nav.signup')}</button>
-          </div>
+          <button className="lp-nav-link" onClick={showSearchGuide} style={{ ...modernStyles.loginLink, ...(isMobile ? { fontSize: '13px', padding: '6px 10px' } : {}) }}>{t('nav.help')}</button>
+          <button className="lp-nav-link" onClick={() => setModalMode('role')} style={{ ...modernStyles.loginLink, ...(isMobile ? { fontSize: '13px', padding: '6px 10px' } : {}) }}>{t('nav.login')}</button>
+          <button className="lp-signup-btn" onClick={() => setModalMode('signup')} style={{ ...modernStyles.signupBtn, ...(isMobile ? modernStyles.signupBtnMobile : {}) }}>{t('nav.signup')}</button>
         </div>
       </nav>
 
@@ -555,12 +553,12 @@ export default function LandingPage({ onLoginSuccess, classes, setClasses, refre
 const modernStyles = {
   container: { background: '#fff', minHeight: '100vh', fontFamily: "'Inter', sans-serif", color: '#1A1A1A', overflowX: 'hidden' },
   meshBackground: { position: 'fixed', inset: 0, background: 'radial-gradient(at 0% 0%, rgba(76, 175, 80, 0.08) 0, transparent 50%), radial-gradient(at 100% 100%, rgba(37, 99, 235, 0.08) 0, transparent 50%)', zIndex: -1 },
-  nav: { padding: '20px 60px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(252, 252, 252, 0.68)', backdropFilter: 'blur(12px)', position: 'sticky', top: 0, zIndex: 100, borderBottom: '1px solid rgba(0,0,0,0.04)' },
-  // logo: { fontSize: '24px', fontWeight: 900, letterSpacing: '-0.5px', display: 'flex', alignItems: 'center' },
+  nav: { padding: '16px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(252, 252, 252, 0.68)', backdropFilter: 'blur(12px)', position: 'sticky', top: 0, zIndex: 100, borderBottom: '1px solid rgba(0,0,0,0.04)' },
+  // logo: { fontSize: '20px', fontWeight: 900, letterSpacing: '-0.5px', display: 'flex', alignItems: 'center', flexShrink: 0 },
   // logoTag: { background: '#1A1A1A', color: '#fff', fontSize: '11px', padding: '3px 8px', borderRadius: '8px', marginLeft: '8px', fontWeight: 700 },
-  navActions: { display: 'flex', gap: '20px', alignItems: 'center' },
-  loginLink: { background: 'none', border: 'none', fontWeight: 700, cursor: 'pointer', fontSize: '15px' },
-  signupBtn: { background: '#1A1A1A', color: '#fff', border: 'none', padding: '12px 14px', borderRadius: '12px', fontWeight: 700, cursor: 'pointer', fontSize: '15px' },
+  navActions: { display: 'flex', gap: '12px', alignItems: 'center', flexWrap: 'wrap', justifyContent: 'flex-end' },
+  loginLink: { background: 'none', border: 'none', fontWeight: 700, cursor: 'pointer', fontSize: '14px', padding: '8px 12px', borderRadius: '8px' },
+  signupBtn: { background: '#1A1A1A', color: '#fff', border: 'none', padding: '10px 16px', borderRadius: '10px', fontWeight: 700, cursor: 'pointer', fontSize: '14px' },
   heroSection: { display: 'flex', alignItems: 'center', gap: '60px', padding: '38px 60px', maxWidth: '1400px', margin: '0 auto', minHeight: '520px' },
   heroContent: { flex: 1 },
   tagBadge: { display: 'inline-flex', alignItems: 'center', gap: '8px', background: '#F0FDF4', color: '#15803D', padding: '8px 16px', borderRadius: '30px', fontSize: '13px', fontWeight: 700, marginBottom: '25px', boxShadow: '0 4px 10px rgba(76, 175, 80, 0.1)' },
@@ -620,8 +618,8 @@ const modernStyles = {
   },
   logoMobile: { maxWidth: '240px' },
   // Mobile specific variants
-  navMobile: { padding: '12px 20px' },
-  signupBtnMobile: { padding: '8px 10px', borderRadius: '10px', fontSize: '11px' },
+  navMobile: { padding: '12px 16px', flexWrap: 'wrap' },
+  signupBtnMobile: { padding: '8px 12px', borderRadius: '8px', fontSize: '13px' },
   heroSectionMobile: { flexDirection: 'column', padding: '25px 20px', minHeight: 'auto' },
   heroTitleMobile: { fontSize: '34px', lineHeight: 1.05 },
   heroSubTextMobile: { fontSize: '15px', maxWidth: '100%', margin: '12px 0' },

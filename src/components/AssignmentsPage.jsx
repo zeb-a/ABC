@@ -3,7 +3,8 @@ import InlineHelpButton from './InlineHelpButton';
 import {
   Plus, Send, Trash2, ChevronLeft, ChevronRight, Image as ImageIcon,
   Type, List, AlignLeft, Grid, FileText, X, GripVertical,
-  Users, User, AlertCircle, CheckCircle2
+  Users, User, AlertCircle, CheckCircle2, Hash, ArrowRightLeft,
+  ArrowRight, Calendar, Star, Zap, Brain, Target
 } from 'lucide-react';
 
 export default function AssignmentsPage({ activeClass, onBack, onPublish }) {
@@ -48,16 +49,52 @@ export default function AssignmentsPage({ activeClass, onBack, onPublish }) {
       setValidationErrors([]);
       return;
     }
-    setQuestions([...questions, {
+
+    // Initialize question data based on type
+    const newQuestion = {
+      // eslint-disable-next-line react-hooks/purity
       id: Date.now(),
       type,
       question: '',
       image: null,
-      options: type === 'choice' ? ['', '', ''] : [],
-      paragraph: type === 'comprehension' ? '' : '',
-      pairs: type === 'match' ? [{ left: '', right: '' }, { left: '', right: '' }] : [],
-      subQuestions: type === 'comprehension' ? [] : undefined
-    }]);
+      options: [],
+      paragraph: '',
+      pairs: [],
+      subQuestions: [],
+      // Type-specific data
+      correctAnswer: type === 'truefalse' ? '' : undefined,
+      numericAnswer: type === 'numeric' ? '' : undefined,
+      sentenceParts: type === 'ordering' ? ['', '', ''] : [],
+      items: type === 'sorting' ? ['', '', ''] : [],
+    };
+
+    // Set type-specific default values
+    switch(type) {
+      case 'choice':
+        newQuestion.options = ['', '', ''];
+        break;
+      case 'match':
+        newQuestion.pairs = [{ left: '', right: '' }, { left: '', right: '' }];
+        break;
+      case 'comprehension':
+        newQuestion.paragraph = '';
+        newQuestion.subQuestions = [];
+        break;
+      case 'truefalse':
+        newQuestion.correctAnswer = '';
+        break;
+      case 'numeric':
+        newQuestion.numericAnswer = '';
+        break;
+      case 'ordering':
+        newQuestion.sentenceParts = ['', '', ''];
+        break;
+      case 'sorting':
+        newQuestion.items = ['', '', ''];
+        break;
+    }
+
+    setQuestions([...questions, newQuestion]);
     // Clear validation error when a new question is added
     setValidationErrors([]);
   };
@@ -101,6 +138,38 @@ export default function AssignmentsPage({ activeClass, onBack, onPublish }) {
 
   const toggleStudentSelection = (studentId) => {
     setSelectedStudents(prev => prev.includes(studentId) ? prev.filter(id => id !== studentId) : [...prev, studentId]);
+  };
+
+  // Helper function to get tooltip text for each question type
+  const getQuestionTooltip = (type) => {
+    const tooltips = {
+      text: 'Students write a short answer',
+      choice: 'Select the correct answer from options',
+      blank: 'Fill in missing words using [blank]',
+      match: 'Match items on the left with right',
+      comprehension: 'Read a story and answer questions',
+      truefalse: 'Mark as True or False',
+      numeric: 'Enter a number as answer',
+      ordering: 'Arrange sentence parts in correct order',
+      sorting: 'Sort items into correct categories'
+    };
+    return tooltips[type] || '';
+  };
+
+  // Helper function to get placeholder text
+  const getPlaceholder = (type) => {
+    const placeholders = {
+      text: 'What question do you want to ask?',
+      choice: 'What is the question?',
+      blank: 'Use [blank] for missing words, e.g., "The [blank] is blue."',
+      match: 'Match items on the left with items on the right',
+      comprehension: 'Students will read a story and answer',
+      truefalse: 'Write a statement that is true or false',
+      numeric: 'Ask a question that has a number answer',
+      ordering: 'Enter a sentence parts to rearrange',
+      sorting: 'List items for students to sort into categories'
+    };
+    return placeholders[type] || 'What is the question?';
   };
 
   return (
@@ -323,9 +392,16 @@ export default function AssignmentsPage({ activeClass, onBack, onPublish }) {
                     flexWrap: isMobile ? 'wrap' : 'nowrap',
                   }}>
                     <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
-                      <p style={{ ...styles.inputLabel, color: isInvalid ? '#E11D48' : '#64748B' }}>
-                        Instruction / Question
-                      </p>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                        <p style={{ ...styles.inputLabel, color: isInvalid ? '#E11D48' : '#64748B' }}>
+                          Instruction / Question
+                        </p>
+                        {getQuestionTooltip(q.type) && (
+                          <span style={styles.tooltipText}>
+                            {getQuestionTooltip(q.type)}
+                          </span>
+                        )}
+                      </div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                         <input
                           style={{
@@ -335,7 +411,7 @@ export default function AssignmentsPage({ activeClass, onBack, onPublish }) {
                             flex: 1,
                             marginBottom: 0
                           }}
-                          placeholder={isInvalid ? "Type your question here..." : (q.type === 'blank' ? "Use [blank] for missing words..." : "What is the question?")}
+                          placeholder={isInvalid ? "Type your question here..." : getPlaceholder(q.type)}
                           value={q.question}
                           onChange={e => {
                             const newQs = [...questions];
@@ -369,9 +445,13 @@ export default function AssignmentsPage({ activeClass, onBack, onPublish }) {
                   </div>
                 )}
 
-                {/* Question Type Specific Content (Choice/Match) remains same as original */}
+                {/* Question Type Specific Content */}
                 {q.type === 'choice' && (
                   <div style={styles.optionsGrid}>
+                    <div style={styles.sectionTip}>
+                      <p style={styles.tipLabel}>💡 Tip:</p>
+                      <p style={styles.tipText}>Add 2-6 answer options. Students will select the correct one.</p>
+                    </div>
                     {q.options.map((opt, oIdx) => (
                       <div key={oIdx} style={styles.optionRow}>
                         <div style={styles.radioPlaceholder} />
@@ -397,6 +477,10 @@ export default function AssignmentsPage({ activeClass, onBack, onPublish }) {
 
                 {q.type === 'match' && (
                   <div style={styles.pairsContainer}>
+                    <div style={styles.sectionTip}>
+                      <p style={styles.tipLabel}>💡 Tip:</p>
+                      <p style={styles.tipText}>Create pairs to match. Students draw lines between matching items.</p>
+                    </div>
                     {q.pairs.map((pair, pIdx) => (
                       <div key={pIdx} style={styles.pairRow}>
                         <input placeholder="Item A" style={styles.pairInput} value={pair.left} onChange={e => { const newQs = [...questions]; newQs[idx].pairs[pIdx].left = e.target.value; setQuestions(newQs); }} />
@@ -405,6 +489,157 @@ export default function AssignmentsPage({ activeClass, onBack, onPublish }) {
                       </div>
                     ))}
                     <button onClick={() => { const newQs = [...questions]; newQs[idx].pairs.push({ left: '', right: '' }); setQuestions(newQs); }} style={styles.addSmallBtn}>+ Add Pair</button>
+                  </div>
+                )}
+
+                {/* NEW: True/False Question */}
+                {q.type === 'truefalse' && (
+                  <div style={styles.specialSection}>
+                    <div style={styles.sectionTip}>
+                      <p style={styles.tipLabel}>💡 Tip:</p>
+                      <p style={styles.tipText}>Select whether the statement is True or False.</p>
+                    </div>
+                    <p style={styles.inputLabel}>Correct Answer</p>
+                    <div style={{ display: 'flex', gap: '12px' }}>
+                      <button
+                        onClick={() => {
+                          const newQs = [...questions];
+                          newQs[idx].correctAnswer = 'true';
+                          setQuestions(newQs);
+                        }}
+                        style={{
+                          ...styles.optionBtn,
+                          background: q.correctAnswer === 'true' ? '#4CAF50' : '#F8FAFC',
+                          borderColor: q.correctAnswer === 'true' ? '#4CAF50' : '#E2E8F0',
+                          color: q.correctAnswer === 'true' ? '#fff' : '#64748B'
+                        }}
+                      >
+                        True
+                      </button>
+                      <button
+                        onClick={() => {
+                          const newQs = [...questions];
+                          newQs[idx].correctAnswer = 'false';
+                          setQuestions(newQs);
+                        }}
+                        style={{
+                          ...styles.optionBtn,
+                          background: q.correctAnswer === 'false' ? '#EF4444' : '#F8FAFC',
+                          borderColor: q.correctAnswer === 'false' ? '#EF4444' : '#E2E8F0',
+                          color: q.correctAnswer === 'false' ? '#fff' : '#64748B'
+                        }}
+                      >
+                        False
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* NEW: Numeric Answer */}
+                {q.type === 'numeric' && (
+                  <div style={styles.specialSection}>
+                    <div style={styles.sectionTip}>
+                      <p style={styles.tipLabel}>💡 Tip:</p>
+                      <p style={styles.tipText}>Students will enter a number as their answer.</p>
+                    </div>
+                    <p style={styles.inputLabel}>Correct Answer (Number)</p>
+                    <input
+                      type="number"
+                      style={{ ...styles.qInput, maxWidth: '200px' }}
+                      placeholder="Enter numeric answer..."
+                      value={q.numericAnswer}
+                      onChange={e => {
+                        const newQs = [...questions];
+                        newQs[idx].numericAnswer = e.target.value;
+                        setQuestions(newQs);
+                      }}
+                    />
+                  </div>
+                )}
+
+                {/* NEW: Sentence Ordering */}
+                {q.type === 'ordering' && (
+                  <div style={styles.optionsGrid}>
+                    <div style={styles.sectionTip}>
+                      <p style={styles.tipLabel}>💡 Tip:</p>
+                      <p style={styles.tipText}>Break a sentence into parts. Students drag to reorder them correctly.</p>
+                    </div>
+                    <p style={styles.inputLabel}>Sentence Parts (in wrong order)</p>
+                    {q.sentenceParts.map((part, pIdx) => (
+                      <div key={pIdx} style={styles.orderingRow}>
+                        <div style={styles.orderNumber}>{pIdx + 1}</div>
+                        <input
+                          style={{ ...styles.optionInput, flex: 1 }}
+                          placeholder={`Part ${pIdx + 1}`}
+                          value={part}
+                          onChange={e => {
+                            const newQs = [...questions];
+                            newQs[idx].sentenceParts[pIdx] = e.target.value;
+                            setQuestions(newQs);
+                          }}
+                        />
+                        {q.sentenceParts.length > 2 && (
+                          <button
+                            onClick={() => {
+                              const newQs = [...questions];
+                              newQs[idx].sentenceParts.splice(pIdx, 1);
+                              setQuestions(newQs);
+                            }}
+                            style={{ ...styles.deleteBtn, padding: 4 }}
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        )}
+                      </div>
+                    ))}
+                    <button onClick={() => {
+                      const newQs = [...questions];
+                      newQs[idx].sentenceParts.push('');
+                      setQuestions(newQs);
+                    }} style={styles.addSmallBtn}>+ Add Part</button>
+                  </div>
+                )}
+
+                {/* NEW: Sorting/Categorizing */}
+                {q.type === 'sorting' && (
+                  <div style={styles.optionsGrid}>
+                    <div style={styles.sectionTip}>
+                      <p style={styles.tipLabel}>💡 Tip:</p>
+                      <p style={styles.tipText}>List items for students to sort into categories you define.</p>
+                    </div>
+                    <p style={styles.inputLabel}>Items to Sort</p>
+                    {q.items.map((item, iIdx) => (
+                      <div key={iIdx} style={styles.sortingRow}>
+                        <ArrowRightLeft size={16} color="#CBD5E1" />
+                        <input
+                          style={{ ...styles.optionInput, flex: 1 }}
+                          placeholder={`Item ${iIdx + 1}`}
+                          value={item}
+                          onChange={e => {
+                            const newQs = [...questions];
+                            newQs[idx].items[iIdx] = e.target.value;
+                            setQuestions(newQs);
+                          }}
+                        />
+                        {q.items.length > 2 && (
+                          <button
+                            onClick={() => {
+                              const newQs = [...questions];
+                              newQs[idx].items.splice(iIdx, 1);
+                              setQuestions(newQs);
+                            }}
+                            style={{ ...styles.deleteBtn, padding: 4 }}
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        )}
+                      </div>
+                    ))}
+                    <button onClick={() => {
+                      const newQs = [...questions];
+                      newQs[idx].items.push('');
+                      setQuestions(newQs);
+                    }} style={styles.addSmallBtn}>+ Add Item</button>
                   </div>
                 )}
               </div>
@@ -463,6 +698,30 @@ export default function AssignmentsPage({ activeClass, onBack, onPublish }) {
               <button onClick={() => addQuestion('comprehension')} style={styles.typeBtn}>
                 <FileText size={isMobile ? 24 : 18} />
                 <span style={{ fontSize: isMobile ? '10px' : 'inherit' }}>{isMobile ? 'Story' : 'Story'}</span>
+              </button>
+
+              {/* NEW: True/False */}
+              <button onClick={() => addQuestion('truefalse')} style={styles.typeBtn}>
+                <Zap size={isMobile ? 24 : 18} />
+                <span style={{ fontSize: isMobile ? '10px' : 'inherit' }}>{isMobile ? 'T/F' : 'True/False'}</span>
+              </button>
+
+              {/* NEW: Numeric */}
+              <button onClick={() => addQuestion('numeric')} style={styles.typeBtn}>
+                <Hash size={isMobile ? 24 : 18} />
+                <span style={{ fontSize: isMobile ? '10px' : 'inherit' }}>{isMobile ? '#️⃣' : 'Numeric'}</span>
+              </button>
+
+              {/* NEW: Sentence Ordering */}
+              <button onClick={() => addQuestion('ordering')} style={styles.typeBtn}>
+                <ArrowRight size={isMobile ? 24 : 18} />
+                <span style={{ fontSize: isMobile ? '10px' : 'inherit' }}>{isMobile ? 'Order' : 'Ordering'}</span>
+              </button>
+
+              {/* NEW: Sorting/Categorizing */}
+              <button onClick={() => addQuestion('sorting')} style={styles.typeBtn}>
+                <Target size={isMobile ? 24 : 18} />
+                <span style={{ fontSize: isMobile ? '10px' : 'inherit' }}>{isMobile ? 'Sort' : 'Sorting'}</span>
               </button>
             </div>
           )}
@@ -579,5 +838,87 @@ const styles = {
   distributionSelector: { display: 'flex', borderRadius: '8px', border: '1px solid #E2E8F0', overflow: 'hidden' },
   toggleButton: { padding: '8px 12px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', fontWeight: '600' },
   studentList: { display: 'flex', flexWrap: 'wrap', gap: '8px' },
-  studentItem: { padding: '6px 12px', borderRadius: '20px', fontSize: '12px', fontWeight: '600', cursor: 'pointer', border: '2px solid #E2E8F0', transition: 'all 0.2s' }
+  studentItem: { padding: '6px 12px', borderRadius: '20px', fontSize: '12px', fontWeight: '600', cursor: 'pointer', border: '2px solid #E2E8F0', transition: 'all 0.2s' },
+  // New styles for new question types
+  optionBtn: {
+    flex: 1,
+    padding: '12px 20px',
+    borderRadius: '10px',
+    border: '2px solid #E2E8F0',
+    background: '#F8FAFC',
+    color: '#64748B',
+    fontWeight: '700',
+    fontSize: '14px',
+    cursor: 'pointer',
+    transition: 'all 0.2s',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center'
+  },
+  orderingRow: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '12px',
+    marginBottom: '10px',
+    background: '#F8FAFC',
+    padding: '10px',
+    borderRadius: '10px'
+  },
+  orderNumber: {
+    width: '28px',
+    height: '28px',
+    borderRadius: '50%',
+    background: '#4F46E5',
+    color: '#fff',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    fontWeight: '800',
+    fontSize: '12px',
+    flexShrink: 0
+  },
+  sortingRow: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '10px',
+    marginBottom: '10px',
+    background: '#F8FAFC',
+    padding: '10px',
+    borderRadius: '10px'
+  },
+  // Tooltip and tip styles
+  tooltipText: {
+    fontSize: '11px',
+    color: '#94A3B8',
+    fontWeight: '500',
+    marginTop: '2px',
+    maxWidth: '200px',
+    textAlign: 'right',
+    lineHeight: '1.3'
+  },
+  sectionTip: {
+    background: '#FEF3C7',
+    border: '1px solid #FDE68A',
+    borderRadius: '8px',
+    padding: '10px 12px',
+    marginBottom: '12px',
+    display: 'flex',
+    gap: '8px',
+    alignItems: 'flex-start'
+  },
+  tipLabel: {
+    fontSize: '12px',
+    fontWeight: '700',
+    color: '#D97706',
+    margin: 0,
+    lineHeight: '1.4'
+  },
+  tipText: {
+    fontSize: '12px',
+    fontWeight: '500',
+    color: '#92400E',
+    margin: 0,
+    lineHeight: '1.4',
+    flex: 1
+  }
 };
