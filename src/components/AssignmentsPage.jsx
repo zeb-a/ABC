@@ -30,7 +30,24 @@ export default function AssignmentsPage({ activeClass, onBack, onPublish }) {
   const fileInputRef = useRef(null);
   const [activePhotoId, setActivePhotoId] = useState(null);
 
-  const addQuestion = (type) => {
+  const addQuestion = (type, parentIdx = null) => {
+    if (type === 'subquestion' && parentIdx !== null) {
+      setQuestions(prevQs => {
+        const newQs = [...prevQs];
+        newQs[parentIdx].subQuestions = newQs[parentIdx].subQuestions || [];
+        newQs[parentIdx].subQuestions.push({
+          id: Date.now(),
+          type: 'text',
+          question: '',
+          image: null,
+          options: [''],
+          pairs: [{ left: '', right: '' }]
+        });
+        return newQs;
+      });
+      setValidationErrors([]);
+      return;
+    }
     setQuestions([...questions, {
       id: Date.now(),
       type,
@@ -38,7 +55,8 @@ export default function AssignmentsPage({ activeClass, onBack, onPublish }) {
       image: null,
       options: type === 'choice' ? ['', '', ''] : [],
       paragraph: type === 'comprehension' ? '' : '',
-      pairs: type === 'match' ? [{ left: '', right: '' }, { left: '', right: '' }] : []
+      pairs: type === 'match' ? [{ left: '', right: '' }, { left: '', right: '' }] : [],
+      subQuestions: type === 'comprehension' ? [] : undefined
     }]);
     // Clear validation error when a new question is added
     setValidationErrors([]);
@@ -204,8 +222,10 @@ export default function AssignmentsPage({ activeClass, onBack, onPublish }) {
         </div>
       </header>
 
-      <div style={styles.workspace}>
-   
+      <div style={{
+        ...styles.workspace,
+        flexDirection: isMobile ? 'column-reverse' : 'row',
+      }}>
         <main style={styles.canvas}>
           {/* Only show student selection list if not assigning to all and no student is selected from dropdown */}
           {!assignToAll && selectedStudents.length === 0 && (
@@ -244,62 +264,110 @@ export default function AssignmentsPage({ activeClass, onBack, onPublish }) {
                 </div>
 
                 {q.type === 'comprehension' && (
-                  <div style={styles.specialSection}>
-                    <p style={styles.inputLabel}>Reading Passage</p>
-                    <textarea
-                      style={styles.paragraphInput}
-                      placeholder="Type the story here..."
-                      value={q.paragraph}
-                      onChange={e => {
-                        const newQs = [...questions];
-                        newQs[idx].paragraph = e.target.value;
-                        setQuestions(newQs);
-                      }}
-                    />
+                  <div style={{ marginBottom: 16 }}>
+                    <div style={styles.specialSection}>
+                      <p style={styles.inputLabel}>Reading Passage</p>
+                      <textarea
+                        style={styles.paragraphInput}
+                        placeholder="Type the story here..."
+                        value={q.paragraph}
+                        onChange={e => {
+                          const newQs = [...questions];
+                          newQs[idx].paragraph = e.target.value;
+                          setQuestions(newQs);
+                        }}
+                      />
+                    </div>
+                    {/* Sub-questions for comprehension */}
+                    <div style={{ marginTop: 8 }}>
+                      <p style={{ ...styles.inputLabel, marginBottom: 4 }}>Comprehension Questions</p>
+                      {(q.subQuestions || []).map((sub, subIdx) => (
+                        <div key={sub.id} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+                          <input
+                            style={{ ...styles.qInput, flex: 1 }}
+                            placeholder={`Comprehension Question ${subIdx + 1}`}
+                            value={sub.question}
+                            onChange={e => {
+                              const newQs = [...questions];
+                              newQs[idx].subQuestions[subIdx].question = e.target.value;
+                              setQuestions(newQs);
+                            }}
+                          />
+                          <button
+                            onClick={() => {
+                              const newQs = [...questions];
+                              newQs[idx].subQuestions.splice(subIdx, 1);
+                              setQuestions(newQs);
+                            }}
+                            style={{ ...styles.deleteBtn, padding: 4 }}
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        </div>
+                      ))}
+                      <button
+                        onClick={() => addQuestion('subquestion', idx)}
+                        style={{ ...styles.addSmallBtn, marginTop: 0 }}
+                      >
+                        + Add Comprehension Question
+                      </button>
+                    </div>
                   </div>
                 )}
 
-                <div style={{
-                  ...styles.questionRow,
-                  alignItems: 'flex-end',
-                  gap: 10,
-                  flexWrap: isMobile ? 'wrap' : 'nowrap',
-                }}>
-                  <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
-                    <p style={{ ...styles.inputLabel, color: isInvalid ? '#E11D48' : '#64748B' }}>
-                      Instruction / Question
-                    </p>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                      <input
-                        style={{
-                          ...styles.qInput,
-                          borderColor: isInvalid ? '#FECACA' : '#F1F5F9',
-                          background: isInvalid ? '#FFF1F2' : '#fff',
-                          flex: 1,
-                          marginBottom: 0
-                        }}
-                        placeholder={isInvalid ? "Type your question here..." : (q.type === 'blank' ? "Use [blank] for missing words..." : "What is the question?")}
-                        value={q.question}
-                        onChange={e => {
-                          const newQs = [...questions];
-                          newQs[idx].question = e.target.value;
-                          setQuestions(newQs);
-                          if (e.target.value.trim()) {
-                            setValidationErrors(prev => prev.filter(id => id !== q.id));
-                          }
-                        }}
-                      />
-                      <button onClick={() => { setActivePhotoId(q.id); fileInputRef.current.click(); }} style={{ ...styles.imageIconBtn, marginTop: 0, marginBottom: 0, position: 'static' }}>
-                        {q.image ? <img src={q.image} style={styles.thumb} alt="" /> : <ImageIcon size={22} />}
-                      </button>
-                    </div>
-                    {isInvalid && (
-                      <div style={styles.errorText}>
-                        <AlertCircle size={14} /> This question cannot be empty
+                {q.type !== 'comprehension' && (
+                  <div style={{
+                    ...styles.questionRow,
+                    alignItems: 'flex-end',
+                    gap: 10,
+                    flexWrap: isMobile ? 'wrap' : 'nowrap',
+                  }}>
+                    <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+                      <p style={{ ...styles.inputLabel, color: isInvalid ? '#E11D48' : '#64748B' }}>
+                        Instruction / Question
+                      </p>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <input
+                          style={{
+                            ...styles.qInput,
+                            borderColor: isInvalid ? '#FECACA' : '#F1F5F9',
+                            background: isInvalid ? '#FFF1F2' : '#fff',
+                            flex: 1,
+                            marginBottom: 0
+                          }}
+                          placeholder={isInvalid ? "Type your question here..." : (q.type === 'blank' ? "Use [blank] for missing words..." : "What is the question?")}
+                          value={q.question}
+                          onChange={e => {
+                            const newQs = [...questions];
+                            newQs[idx].question = e.target.value;
+                            setQuestions(newQs);
+                            if (e.target.value.trim()) {
+                              setValidationErrors(prev => prev.filter(id => id !== q.id));
+                            }
+                          }}
+                        />
+                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                          <button
+                            title="Max file size: 1MB."
+                            onClick={() => { setActivePhotoId(q.id); fileInputRef.current.click(); }}
+                            style={{ ...styles.imageIconBtn, marginTop: 0, marginBottom: 0, position: 'static' }}
+                          >
+                            {q.image ? <img src={q.image} style={styles.thumb} alt="" /> : <ImageIcon size={22} />}
+                          </button>
+                          <span style={{ color: '#E11D48', fontWeight: 700, fontSize: 12, marginTop: 4, textAlign: 'center', maxWidth: 120 }}>
+                            <AlertCircle size={14} style={{ verticalAlign: 'middle', marginRight: 4 }} />
+                            Max file Size 1MB
+                          </span>
+                        </div>
                       </div>
-                    )}
+                      {isInvalid && (
+                        <div style={styles.errorText}>
+                          <AlertCircle size={14} /> This question cannot be empty
+                        </div>
+                      )}
+                    </div>
                   </div>
-                </div>
+                )}
 
                 {/* Question Type Specific Content (Choice/Match) remains same as original */}
                 {q.type === 'choice' && (
@@ -344,23 +412,19 @@ export default function AssignmentsPage({ activeClass, onBack, onPublish }) {
           })}
           <div style={{ height: '100px' }} />
         </main>
-             {/* RETRACTABLE SIDEBAR */}
         <aside style={{
           ...styles.sidebar,
-          // DESKTOP: Retractable width | MOBILE: Fixed bottom height
           width: isMobile ? '100%' : (sidebarVisible ? '200px' : '0px'),
           height: isMobile ? 'auto' : '100%',
           padding: isMobile ? '10px' : (sidebarVisible ? '24px' : '0px'),
           opacity: isMobile ? 1 : (sidebarVisible ? 1 : 0),
-
-          // Layout change
           flexDirection: isMobile ? 'row' : 'column',
           justifyContent: isMobile ? 'space-around' : 'flex-start',
-
-          // Positioning
-          position: isMobile ? 'fixed' : 'relative',
+          position: isMobile ? 'fixed' : 'absolute',
+          top: isMobile ? 'auto' : 0,
+          right: isMobile ? 'auto' : 0,
+          left: isMobile ? 0 : 'auto',
           bottom: isMobile ? 0 : 'auto',
-          left: 0,
           zIndex: 1000,
           borderTop: isMobile ? '1px solid #E2E8F0' : 'none',
           borderRight: isMobile ? 'none' : '1px solid #E2E8F0'

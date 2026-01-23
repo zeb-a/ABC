@@ -69,10 +69,9 @@ Changes are saved immediately to the app state.`
       
     'settings': {
       title: 'Settings — Class configuration',
-      body: `Customize the class Points cards and roster here.
+      body: `Customize the class Points cards.
 
 - Points Cards: add, edit, or delete reward/penalty cards (label, emoji, point value).
-- Students: edit student names and avatars, or delete a student.
 - Reset: use "Reset to Defaults" to restore a starter set of Points cards.`
     },
     'access-codes': {
@@ -89,22 +88,19 @@ Changes are saved immediately to the app state.`
 - **Student access:** Students use the Student Code to view and complete assignments.
 - **Assignment visibility:** When submitted, assignments are visible to the teacher in the Messages & Grading section of the Class Dashboard.`
     },
-    'reports': {
-      title: 'Reports — Class and student analytics',
-      body: `Use Reports to review points and Points trends.
 
-- Pick a student or view the whole class.
-- Change the time range (Week / Month / Year) to update charts.
-- Switch language between English and 中文 for parent-friendly reports.
-- Use the teacher note for a short paragraph you can copy into a parent message.
-- The reports are automatically saved and updated as points are awarded, 
-- Those reports generated based on the points data driven from the cards stored in the app.`
+    'settings-cards': {
+      title: 'Points  configuration',
+      body: `Customize the class Points cards.
+- Points Cards: add, edit, or delete reward/penalty cards (label, emoji, point value).
+- **Note**: in Edit mode, click the default emoji to open the emoji picker.
+- Reset: use "Reset to Defaults" to restore a starter set of Points cards.`
     },
     'whiteboard': {
       title: 'Whiteboard — Draw, type, and export',
-      body: `Open tools at the right: Pencil, Highlighter, Text, Eraser, Color picker and size selector.
+      body: `Right-side tools: Pencil, Highlighter, Text, Eraser, Color picker, and Size selector.
 
-- Click the canvas to draw. Use the Text tool to place typed text, then press Enter to bake it into the board.
+- Click and drag on the canvas to draw. Use the Text tool to type, press Enter to place text on the board.
 - Export: click **Export PNG** to download the board as an image.
 - Clear: use the trash button to wipe the canvas.`
     },
@@ -123,6 +119,8 @@ Changes are saved immediately to the app state.`
 - Use the Refresh button if your teacher just sent a new assignment.`
     }
   },
+    
+  
   zh: {
     'landing': {
       title: '欢迎使用 ClassABC — 快速入门',
@@ -187,26 +185,16 @@ Changes are saved immediately to the app state.`
 - 在分数字段输入成绩并点击 **保存并发送** 返回反馈。
 - 使用返回/关闭按钮回到仪表盘。`
     },
-    'settings': {
-      title: '设置 — 班级配置',
-      body: `在此处自定义积分卡和班级名册。
 
-- 积分卡：添加、编辑或删除奖励/惩罚卡（标签、表情、分值）。
-- 学生：编辑学生姓名和头像，或删除学生。
-- 重置：使用“恢复默认”还原初始积分卡。`
+    'settings-cards': {
+      title: '编辑积分卡',
+      body: `本页允许您为班级添加、编辑或删除积分卡。
+- 生成码：打开该页面时，如果缺失系统会自动生成。
+
+- 选择单个学生或查看整个班级。'
     },
     'access-codes': {
-      title: '访问码 — 学生与家长登录码',
-      body: `查看每位学生用于学生/家长门户的 **学生码** 与 **家长码**。
-
-- 生成码：打开该页面时，如果缺失系统会自动生成。
-- 复制并发送给对应的学生或家长以登录使用。`
-    },
-    'reports': {
-      title: '报告 — 班级与学生分析',
-      body: `使用报告查看积分与行为趋势。
-
-- 选择单个学生或查看整个班级。
+    }
 - 更改时间范围（周/月/年）更新图表。
 - 支持切换语言以生成适合家长的报告。
 - 使用教师笔记生成可复制给家长的简短摘要。`

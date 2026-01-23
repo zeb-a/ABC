@@ -374,7 +374,6 @@ if (avatar && avatar.startsWith('data:image')) {
           students = students.slice(0, 200); // Only keep first 200
         }
 
-        // Log the size of assignments and the payload for debugging
         const assignmentsJson = JSON.stringify(assignments);
         const updatePayload = {
           name: cls.name,
@@ -388,7 +387,6 @@ if (avatar && avatar.startsWith('data:image')) {
           Access_Codes: cls.Access_Codes || {}
         };
         const payloadJson = JSON.stringify(updatePayload);
-        console.warn('[API DEBUG] assignments size:', assignmentsJson.length, 'payload size:', payloadJson.length, 'assignments:', assignments);
 
         // Try to match by PocketBase ID first, then by name
         let serverRecord = null;
