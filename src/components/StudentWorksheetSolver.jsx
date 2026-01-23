@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { ChevronLeft, CheckCircle2, ArrowRight } from 'lucide-react';
 import api from '../services/api';
 
@@ -6,7 +6,14 @@ const StudentWorksheetSolver = ({ worksheet, onClose, studentName, studentId, cl
   const [answers, setAnswers] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
-
+// 2. Add isMobile detection logic
+  const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth <= 768);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+  
   const handleAnswerChange = (questionId, value, questionType) => {
     if (questionType === 'blank') {
       const blanks = worksheet.questions.find(q => q.id === questionId)?.question.match(/\[blank\]/gi);
@@ -170,23 +177,73 @@ const StudentWorksheetSolver = ({ worksheet, onClose, studentName, studentId, cl
   // --- 2. THE MAIN WORKSHEET VIEW ---
   return (
     <div style={{ background: '#fff', minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
-      <header style={{ padding: '20px 40px', borderBottom: '1px solid #E2E8F0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <button onClick={onClose} style={{ border: 'none', background: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 700 }}>
-          <ChevronLeft size={20} /> Quit
-        </button>
-        <h2 style={{ margin: 0, fontSize: '18px', fontWeight: 900 }}>{worksheet.title}</h2>
-        <button 
-          onClick={handleSubmit} 
-          disabled={isSubmitting}
-          style={{ 
-            background: isSubmitting ? '#94A3B8' : '#4F46E5', 
-            color: '#fff', border: 'none', padding: '10px 25px', borderRadius: '12px', fontWeight: 700, cursor: isSubmitting ? 'wait' : 'pointer' 
-          }}
-        >
-          {isSubmitting ? 'Submitting...' : 'Finish & Submit'}
-        </button>
-      </header>
+      <header style={{ 
+  // Reduced padding for mobile to push buttons to the edges
+  padding: isMobile ? '12px 16px' : '20px 40px', 
+  borderBottom: '1px solid #E2E8F0', 
+  display: 'flex', 
+  justifyContent: 'space-between', 
+  alignItems: 'center',
+  background: '#fff',
+  position: 'sticky',
+  top: 0,
+  zIndex: 10
+}}>
+  {/* QUIT BUTTON: Icon only on mobile */}
+  <button 
+    onClick={onClose} 
+    style={{ 
+      border: 'none', 
+      background: isMobile ? '#F1F5F9' : 'none', // Added light background on mobile for "clarity"
+      borderRadius: isMobile ? '12px' : '0',
+      padding: isMobile ? '8px' : '0',
+      cursor: 'pointer', 
+      display: 'flex', 
+      alignItems: 'center', 
+      gap: '8px', 
+      fontWeight: 700 
+    }}
+  >
+    <ChevronLeft size={isMobile ? 24 : 20} /> 
+    {!isMobile && 'Quit'}
+  </button>
 
+  {/* TITLE: Centered and truncated if too long */}
+  <h2 style={{ 
+    margin: 0, 
+    fontSize: isMobile ? '16px' : '18px', 
+    fontWeight: 900,
+    flex: 1,
+    textAlign: 'center',
+    padding: '0 10px',
+    whiteSpace: 'nowrap',
+    overflow: 'hidden',
+    textOverflow: 'ellipsis'
+  }}>
+    {worksheet.title}
+  </h2>
+
+  {/* SUBMIT BUTTON: Simplified text on mobile */}
+  <button 
+    onClick={handleSubmit} 
+    disabled={isSubmitting}
+    style={{ 
+      background: isSubmitting ? '#94A3B8' : '#4F46E5', 
+      color: '#fff', 
+      border: 'none', 
+      padding: isMobile ? '10px 18px' : '10px 25px', 
+      borderRadius: '12px', 
+      fontWeight: 700, 
+      cursor: isSubmitting ? 'wait' : 'pointer',
+      whiteSpace: 'nowrap'
+    }}
+  >
+    {isSubmitting 
+      ? (isMobile ? '...' : 'Submitting...') 
+      : (isMobile ? 'Submit' : 'Finish & Submit')
+    }
+  </button>
+</header>
       <main style={{ flex: 1, overflowY: 'auto', padding: '40px 20px', background: '#F8FAFC' }}>
         <div style={{ maxWidth: '700px', margin: '0 auto' }}>
           {worksheet.questions.map((q, idx) => (

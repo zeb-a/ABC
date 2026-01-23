@@ -1,5 +1,5 @@
 /* eslint-disable no-unused-vars */
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   ArrowRight, Trophy, Star, BookOpen, Ghost, LogOut,
   CheckCircle, Clock, AlertCircle, Globe
@@ -29,6 +29,12 @@ const translations = {
 };
 
 const StudentPortal = ({ onBack, classes = [], refreshClasses }) => {
+  const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth <= 768);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
   const [activeWorksheet, setActiveWorksheet] = useState(null);
   const [deleteTarget, setDeleteTarget] = useState(null); // For the modern modal
   const [lang, setLang] = useState('en');
@@ -171,8 +177,8 @@ const StudentPortal = ({ onBack, classes = [], refreshClasses }) => {
             <Globe size={18} /> {t.langToggle}
           </button>
           {/* Refresh button removed on mobile/student portal per Phase 1 UX decision */}
-          <button onClick={handleLogout} style={{ background: 'linear-gradient(135deg, #6366F1 0%, #8B5CF6 100%)', color: '#fff', border: 'none', padding: '12px 24px', borderRadius: '16px', fontWeight: 800, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <LogOut size={18} /> {t.logout}
+          <button onClick={handleLogout} style={{minWidth: isMobile ? '48px' : 'auto', background: 'linear-gradient(135deg, #6366F1 0%, #8B5CF6 100%)', color: '#fff', border: 'none', borderRadius: '16px', fontWeight: 800, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: isMobile ? '0' : '8px', padding: isMobile ? '12px' : '12px 24px', }}>
+            <LogOut size={isMobile ? 22 : 18} /> {!isMobile && t.logout}
           </button>
         </div>
       </div>

@@ -597,7 +597,7 @@ const modernStyles = {
   iconBoxPurple: { width: '60px', height: '60px', background: '#F3E8FF', borderRadius: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '20px' },
   bentoText: { fontSize: '15px', fontWeight: 600, color: '#64748B', lineHeight: 1.6, marginTop: '10px' },
   ctaSection: { textAlign: 'center', padding: '0 20px 100px' },
-  mainCta: { background: '#1A1A1A', color: '#fff', border: 'none', padding: '18px 36px', borderRadius: '16px', fontSize: '16px', fontWeight: 700, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '10px', boxShadow: '0 10px 30px rgba(0,0,0,0.1)' },
+  mainCta: { width: '100%', background: '#1A1A1A', color: '#fff', border: 'none', padding: '18px 36px', borderRadius: '16px', fontSize: '20px', fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center',justifyContent: 'center', gap: '10px', boxShadow: '0 10px 30px rgba(0,0,0,0.1)' },
   overlay: { position: 'fixed', inset: 0, background: 'rgba(255,255,255,0.7)', backdropFilter: 'blur(15px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 },
   modernModal: { width: '480px', background: '#fff', borderRadius: '32px', padding: '40px', boxShadow: '0 40px 100px rgba(0,0,0,0.1)', border: '1px solid #E2E8F0' },
   modalHeader: { display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '30px' },
