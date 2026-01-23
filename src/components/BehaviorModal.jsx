@@ -50,6 +50,7 @@ export default function BehaviorModal({ student, behaviors, onClose, onGivePoint
   }, [activeTab]);
 
   // When a source class is selected (and we're on the Import tab), fetch its behaviors and compute preview diff
+  // When a source class is selected (and we're on the Import tab), fetch its behaviors and compute preview diff
   useEffect(() => {
     let mounted = true;
     const fetchSource = async () => {
@@ -60,17 +61,24 @@ export default function BehaviorModal({ student, behaviors, onClose, onGivePoint
       }
       setLoadingSource(true);
       try {
-        const src = await api.pbRequest(`/collections/classes/records/${selectedClassId}`);
+        // FIX 1: Use the dedicated getBehaviors API call instead of raw class record request
+        const items = await api.getBehaviors(selectedClassId);
+        
         if (!mounted) return;
-        const sb = src?.behaviors || src?.data?.behaviors || [];
-        const items = Array.isArray(sb) ? sb : [];
         setSourceBehaviors(items);
-        // Normalize existing behaviors for comparison (use id or label)
-        const existingKeys = new Set((normalizedBehaviors || []).map(b => b.id || b.label));
+
+        // FIX 2: Compare by label only. 
+        // IDs will always be different across different classes.
+        const existingLabels = new Set(
+          (normalizedBehaviors || []).map(b => (b.label || '').toLowerCase().trim())
+        );
+
         const filtered = items.filter(x => {
-          const key = x?.id || x?.label;
-          return key && !existingKeys.has(key);
+          const label = (x?.label || '').toLowerCase().trim();
+          // Only import if the label doesn't already exist in the current class
+          return label && !existingLabels.has(label);
         });
+
         setToImport(filtered);
       } catch (err) {
         console.error('Failed to fetch source class behaviors', err);
@@ -83,7 +91,6 @@ export default function BehaviorModal({ student, behaviors, onClose, onGivePoint
     fetchSource();
     return () => { mounted = false; };
   }, [selectedClassId, activeTab, normalizedBehaviors]);
-
   return (
     <div style={styles.overlay} onClick={onClose}>
       <div style={styles.modalCard} onClick={e => e.stopPropagation()}>
