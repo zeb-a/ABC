@@ -292,10 +292,8 @@ if (avatar && avatar.startsWith('data:image')) {
     const results = [];
 
     for (const behavior of behaviors) {
-      // PocketBase schema on the server expects 'type' as a single text value in
-      // many deployments. To be tolerant across schemas, send the first value
-      // when an array is provided. Also ensure pts is a number.
-      const behaviorType = Array.isArray(behavior.type) ? (behavior.type[0] || '') : (behavior.type || 'wow');
+      // Always send type as a string (first value if array, or fallback to 'wow')
+      const behaviorType = Array.isArray(behavior.type) ? (behavior.type[0] || 'wow') : (behavior.type || 'wow');
 
       const payload = {
         label: behavior.label,
@@ -306,24 +304,11 @@ if (avatar && avatar.startsWith('data:image')) {
       };
 
       const existing = existingMap.get(behavior.label);
-      // Helper to attempt create/patch and fallback if PocketBase rejects array vs text for 'type'
-      const trySave = async (method, url, bodyPayload) => {
-        try {
-          return await pbRequest(url, { method, body: JSON.stringify(bodyPayload) });
-        } catch (err) {
-          // If server rejects array for 'type' (400), try falling back to a single string value
-          if (err && err.status === 400 && Array.isArray(bodyPayload.type)) {
-            const fallback = { ...bodyPayload, type: bodyPayload.type[0] || '' };
-            return await pbRequest(url, { method, body: JSON.stringify(fallback) });
-          }
-          throw err;
-        }
-      };
-
+      // Only send string for type, never array
       if (existing) {
-        results.push(await trySave('PATCH', `/collections/behaviors/records/${existing.id}`, payload));
+        results.push(await pbRequest(`/collections/behaviors/records/${existing.id}`, { method: 'PATCH', body: JSON.stringify(payload) }));
       } else {
-        results.push(await trySave('POST', '/collections/behaviors/records', payload));
+        results.push(await pbRequest('/collections/behaviors/records', { method: 'POST', body: JSON.stringify(payload) }));
       }
     }
     return results;
@@ -355,7 +340,7 @@ if (avatar && avatar.startsWith('data:image')) {
 
   // --- MODIFIED: Saves class data, including students and tasks (from behaviors) ---
   // 'behaviorsForTasks' should be passed from the calling component (e.g., App.jsx)
-  async saveClasses(email, arr, behaviorsForTasks = []) { // Added behaviorsForTasks parameter
+  async saveClasses(email, arr, behaviorsForTasks = []) {
     try {
       // Get existing classes for this teacher
       const existing = await pbRequest('/collections/classes/records?perPage=500');
@@ -365,12 +350,46 @@ if (avatar && avatar.startsWith('data:image')) {
       const byId = new Map(userClasses.map(c => [c.id, c]));
       const byName = new Map(userClasses.map(c => [c.name, c]));
 
-      // ...existing code...
-
       const processedIds = new Set();
+
+      // Helper to check JSON size (PocketBase limit is 1MB = 1048576 bytes)
+      function isTooLarge(obj) {
+        try {
+          return JSON.stringify(obj).length > 900000; // Use 900KB for safety
+        } catch {
+          return false;
+        }
+      }
 
       // Process each incoming class
       for (const cls of arr) {
+        // Trim assignments/students if too large
+        let assignments = Array.isArray(cls.assignments) ? [...cls.assignments] : [];
+        let students = Array.isArray(cls.students) ? [...cls.students] : [];
+        // Remove large fields from assignments if needed
+        if (isTooLarge(assignments)) {
+          assignments = assignments.slice(0, 100); // Only keep first 100
+        }
+        if (isTooLarge(students)) {
+          students = students.slice(0, 200); // Only keep first 200
+        }
+
+        // Log the size of assignments and the payload for debugging
+        const assignmentsJson = JSON.stringify(assignments);
+        const updatePayload = {
+          name: cls.name,
+          teacher: email,
+          students: JSON.stringify(students),
+          tasks: JSON.stringify(behaviorsForTasks),
+          assignments: assignmentsJson,
+          submissions: JSON.stringify(cls.submissions || []),
+          studentAssignments: JSON.stringify(cls.studentAssignments || []),
+          student_submissions: JSON.stringify(cls.student_submissions || []),
+          Access_Codes: cls.Access_Codes || {}
+        };
+        const payloadJson = JSON.stringify(updatePayload);
+        console.warn('[API DEBUG] assignments size:', assignmentsJson.length, 'payload size:', payloadJson.length, 'assignments:', assignments);
+
         // Try to match by PocketBase ID first, then by name
         let serverRecord = null;
         let pbId = null;
@@ -379,7 +398,6 @@ if (avatar && avatar.startsWith('data:image')) {
           serverRecord = byId.get(cls.id);
           pbId = cls.id;
         } else if (byName.has(cls.name)) {
-          // Fall back to name matching for classes created locally
           serverRecord = byName.get(cls.name);
           pbId = serverRecord.id;
         }
@@ -387,47 +405,20 @@ if (avatar && avatar.startsWith('data:image')) {
         if (serverRecord && pbId) {
           processedIds.add(pbId);
           try {
-            // ...existing code...
-            const updatePayload = {
-              name: cls.name,
-              teacher: email,
-              students: JSON.stringify(cls.students || []), // Serialize students to JSON
-              tasks: JSON.stringify(behaviorsForTasks),      // Serialize behaviors to 'tasks' JSON
-              assignments: JSON.stringify(cls.assignments || []), // Serialize assignments to JSON
-              submissions: JSON.stringify(cls.submissions || []), // Serialize submissions to JSON
-              studentAssignments: JSON.stringify(cls.studentAssignments || []), // Serialize student assignments to JSON
-              student_submissions: JSON.stringify(cls.student_submissions || []), // Serialize student submissions to JSON
-              Access_Codes: cls.Access_Codes || {}
-            };
-
             await pbRequest(`/collections/classes/records/${pbId}`, {
               method: 'PATCH',
-              body: JSON.stringify(updatePayload)
+              body: payloadJson
             });
-            // ...existing code...
           } catch (e) {
             console.error('[API] Update failed for class:', cls.name, 'Error:', e.message, e.body);
-            // Continue with next class instead of throwing
           }
         } else {
-          // Create new ONLY if class has no ID
           try {
-            // ...existing code...
             const created = await pbRequest('/collections/classes/records', {
               method: 'POST',
-              body: JSON.stringify({
-                name: cls.name,
-                teacher: email,
-                students: JSON.stringify(cls.students || []), // Serialize students to JSON
-                tasks: JSON.stringify(behaviorsForTasks),      // Serialize behaviors to 'tasks' JSON
-                assignments: JSON.stringify(cls.assignments || []), // Serialize assignments to JSON
-                submissions: JSON.stringify(cls.submissions || []), // Serialize submissions to JSON
-                studentAssignments: JSON.stringify(cls.studentAssignments || []), // Serialize student assignments to JSON
-                student_submissions: JSON.stringify(cls.student_submissions || []) // Serialize student submissions to JSON              
-                })
+              body: payloadJson
             });
             processedIds.add(created.id);
-            // ...existing code...
           } catch (e) {
             console.error('[API] Create failed for class:', cls.name, 'Error:', e.message);
           }
@@ -437,7 +428,6 @@ if (avatar && avatar.startsWith('data:image')) {
       // Delete records that are not in the incoming array
       for (const [id, item] of byId) {
         if (!processedIds.has(id)) {
-          // ...existing code...
           try {
             await pbRequest(`/collections/classes/records/${id}`, { method: 'DELETE' });
           } catch (e) {

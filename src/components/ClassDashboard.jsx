@@ -672,14 +672,14 @@ export default function ClassDashboard({
           <SidebarIcon
             icon={Home}
             label="Back to Dashboard (Return to main dashboard)"
-            onClick={() => { onBack(); setViewMode('dashboard'); }}
+            onClick={() => { onBack(); setViewMode('dashboard'); setSidebarVisible(false); }}
             style={styles.icon}
           />
 
           <SidebarIcon
             icon={ClipboardList}
             label="Open Assignments"
-            onClick={() => setViewMode('assignments')}
+            onClick={() => { setViewMode('assignments'); setSidebarVisible(false); }}
             isActive={viewMode === 'assignments'}
           />
 
@@ -689,6 +689,7 @@ export default function ClassDashboard({
             onClick={() => {
               setViewMode('messages');
               fetchFreshSubmissions();
+              setSidebarVisible(false);
             }}
             isActive={viewMode === 'messages'}
             style={styles.icon}
@@ -706,14 +707,14 @@ export default function ClassDashboard({
           <SidebarIcon
             icon={Dices}
             label="Open Lucky Draw"
-            onClick={() => { setViewMode('dashboard'); setIsLuckyDrawOpen(true); }}
+            onClick={() => { setViewMode('dashboard'); setIsLuckyDrawOpen(true); setSidebarVisible(false); }}
             style={styles.icon}
           />
 
           <SidebarIcon
             icon={Trophy}
             label="Progress Road"
-            onClick={onOpenEggRoad}
+            onClick={() => { onOpenEggRoad(); setSidebarVisible(false); }}
             style={styles.icon}
           />
 
@@ -727,6 +728,7 @@ export default function ClassDashboard({
               } else {
                 setIsAttendanceMode(false);
               }
+              setSidebarVisible(false);
             }}
             isActive={isAttendanceMode}
             style={styles.icon}
@@ -740,6 +742,7 @@ export default function ClassDashboard({
             onClick={() => {
               ensureCodesAndOpen();
               setViewMode('codes');
+              setSidebarVisible(false);
             }}
             isActive={viewMode === 'codes'}
             style={styles.icon}
@@ -751,6 +754,7 @@ export default function ClassDashboard({
             onClick={() => {
               setViewMode('reports');
               updateClasses(prev => prev.map(c => c.id === activeClass.id ? { ...c, isViewingReports: true } : c));
+              setSidebarVisible(false);
             }}
             isActive={viewMode === 'reports'}
             style={styles.icon}
@@ -758,26 +762,26 @@ export default function ClassDashboard({
           <SidebarIcon
             icon={Clock}
             label="Open Class Timer"
-            onClick={() => setViewMode('timer')}
+            onClick={() => { setViewMode('timer'); setSidebarVisible(false); }}
             isActive={viewMode === 'timer'}
             style={styles.icon}
           />
           <SidebarIcon
             icon={Siren}
             label="Start Attention Buzzer"
-            onClick={startBuzzerSequence}
+            onClick={() => { startBuzzerSequence(); setSidebarVisible(false); }}
             style={{ ...styles.icon, color: buzzerState !== 'idle' ? '#FF5252' : '#636E72' }}
           />
           <SidebarIcon
             icon={Presentation}
             label="Open Whiteboard"
-            onClick={() => setShowWhiteboard(true)}
+            onClick={() => { setShowWhiteboard(true); setSidebarVisible(false); }}
             style={styles.icon}
           />
           <SidebarIcon
             icon={Settings}
             label="Open Settings"
-            onClick={() => setViewMode('settings')}
+            onClick={() => { setViewMode('settings'); setSidebarVisible(false); }}
             isActive={viewMode === 'settings'}
             style={styles.icon}
           />
