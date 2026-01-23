@@ -50,7 +50,6 @@ export default function BehaviorModal({ student, behaviors, onClose, onGivePoint
   }, [activeTab]);
 
   // When a source class is selected (and we're on the Import tab), fetch its behaviors and compute preview diff
-  // When a source class is selected (and we're on the Import tab), fetch its behaviors and compute preview diff
   useEffect(() => {
     let mounted = true;
     const fetchSource = async () => {
