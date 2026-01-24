@@ -6,7 +6,6 @@ import {
 } from 'lucide-react';
 import InlineHelpButton from './InlineHelpButton';
 import StudentWorksheetSolver from './StudentWorksheetSolver';
-import api from '../services/api';
 
 const translations = {
   en: {
@@ -42,7 +41,7 @@ const StudentPortal = ({ onBack, classes = [], refreshClasses }) => {
   const [lang, setLang] = useState('en');
   const t = translations[lang];
 
-  // 1. SESSION & STORAGE (Using the Reference File Logic)
+  // --- LOGIC FROM YOUR WORKING REFERENCE FILE ---
   const session = useMemo(() => {
     try {
       const saved = localStorage.getItem('classABC_student_portal');
@@ -57,30 +56,6 @@ const StudentPortal = ({ onBack, classes = [], refreshClasses }) => {
     } catch (e) { return []; }
   });
 
-  // BACKGROUND SYNC: Strictly check for 'submitted' status so tasks don't jump early
-  useEffect(() => {
-    const syncWithDatabase = async () => {
-      if (!session) return;
-      try {
-        const sId = String(session.studentId);
-        // CRITICAL FIX: Only fetch items where status is explicitly 'submitted'
-        const response = await api.pbRequest(`/collections/submissions/records?filter=(student_id='${sId}' && status='submitted')`);
-        const serverDoneIds = (response.items || []).map(item => String(item.assignment_id));
-        
-        if (serverDoneIds.length > 0) {
-          setCompletedAssignments(prev => {
-            const combined = [...new Set([...prev, ...serverDoneIds])];
-            localStorage.setItem('classABC_completed_assignments', JSON.stringify(combined));
-            return combined;
-          });
-        }
-      } catch (err) {
-        console.log("Offline or sync pending...");
-      }
-    };
-    syncWithDatabase();
-  }, [session]);
-
   const [hiddenAssignments, setHiddenAssignments] = useState(() => {
     try {
       const saved = localStorage.getItem('classABC_hidden_assignments');
@@ -88,7 +63,6 @@ const StudentPortal = ({ onBack, classes = [], refreshClasses }) => {
     } catch (e) { return []; }
   });
 
-  // 2. DATA PROCESSING (Filtering logic from your Reference File)
   const { liveClass, studentAssignments, currentStudent } = useMemo(() => {
     if (!session || !classes.length) return { liveClass: null, studentAssignments: [], currentStudent: null };
 
@@ -103,7 +77,11 @@ const StudentPortal = ({ onBack, classes = [], refreshClasses }) => {
         const isSpecific = Array.isArray(asm.assignedTo) && asm.assignedTo.some(id => String(id) === sId);
         return isGlobal || isSpecific;
       })
-      .sort((a, b) => new Date(b.created || b.id) - new Date(a.created || a.id));
+      .sort((a, b) => {
+        const dateA = new Date(b.created || b.id).getTime();
+        const dateB = new Date(a.created || a.id).getTime();
+        return dateA - dateB;
+      });
 
     return { 
       liveClass: foundClass, 
@@ -112,9 +90,9 @@ const StudentPortal = ({ onBack, classes = [], refreshClasses }) => {
     };
   }, [classes, session, hiddenAssignments]);
 
-  // Derived lists for the "Separate Sections" UI
-  const todoList = studentAssignments.filter(asm => !completedAssignments.includes(String(asm.id)));
-  const doneList = studentAssignments.filter(asm => completedAssignments.includes(String(asm.id)));
+  // SEPARATING LISTS FOR THE TWO SECTIONS
+  const todoList = studentAssignments.filter(asm => !completedAssignments.includes(asm.id));
+  const doneList = studentAssignments.filter(asm => completedAssignments.includes(asm.id));
 
   const handleHideAssignment = () => {
     if (!deleteTarget) return;
@@ -139,8 +117,7 @@ const StudentPortal = ({ onBack, classes = [], refreshClasses }) => {
         studentId={currentStudent?.id || session.studentId}
         classId={liveClass?.id}
         onCompletion={(id) => {
-          // This is the Reference Logic that makes it work
-          const newList = [...new Set([...completedAssignments, String(id)])];
+          const newList = [...completedAssignments, id];
           setCompletedAssignments(newList);
           localStorage.setItem('classABC_completed_assignments', JSON.stringify(newList));
         }}
@@ -162,7 +139,7 @@ const StudentPortal = ({ onBack, classes = [], refreshClasses }) => {
         }
       `}</style>
       
-      {/* HIDE TASK MODAL */}
+      {/* MODAL: HIDE TASK */}
       {deleteTarget && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(15, 23, 42, 0.6)', backdropFilter: 'blur(8px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2000 }}>
           <div style={{ background: '#fff', padding: '40px', borderRadius: '32px', maxWidth: '450px', width: '90%', textAlign: 'center', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)' }}>
@@ -206,7 +183,7 @@ const StudentPortal = ({ onBack, classes = [], refreshClasses }) => {
           <StatCard icon={<BookOpen color="#6366F1" size={32} />} val={todoList.length} label={t.todo} />
         </div>
 
-        {/* SECTION: TO DO */}
+        {/* SECTION 1: TO DO */}
         <h3 style={{ fontSize: '28px', fontWeight: 900, marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '12px' }}>
           <BookOpen size={28} color="#6366F1" /> {t.todo}
         </h3>
@@ -216,34 +193,46 @@ const StudentPortal = ({ onBack, classes = [], refreshClasses }) => {
             {todoList.map((asm) => (
               <div key={asm.id} onClick={() => setActiveWorksheet(asm)} style={{ background: '#fff', padding: '28px', borderRadius: '28px', border: '1px solid #E2E8F0', cursor: 'pointer', transition: 'transform 0.2s', boxShadow: '0 2px 10px rgba(0,0,0,0.03)' }} onMouseEnter={(e) => e.currentTarget.style.transform = 'translateY(-4px)'} onMouseLeave={(e) => e.currentTarget.style.transform = 'translateY(0)'}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
-                  <div style={{ width: '65px', height: '65px', background: '#EEF2FF', borderRadius: '20px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><BookOpen size={32} color="#4F46E5" /></div>
+                  <div style={{ width: '65px', height: '65px', background: '#EEF2FF', borderRadius: '20px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <BookOpen size={32} color="#4F46E5" />
+                  </div>
                   <div>
                     <h4 style={{ margin: '0 0 5px 0', fontSize: '18px', fontWeight: 900 }}>{asm.title}</h4>
-                    <span style={{ fontSize: '13px', color: '#64748B' }}>{asm.questions?.length || 0} {t.questions}</span>
+                    <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                      <span style={{ fontSize: '13px', color: '#64748B' }}>{asm.questions?.length || 0} {t.questions}</span>
+                      <span style={{ fontSize: '12px', fontWeight: 800, padding: '4px 10px', borderRadius: '10px', background: '#EEF2FF', color: '#4F46E5' }}>{t.open}</span>
+                    </div>
                   </div>
                 </div>
               </div>
             ))}
           </div>
         ) : (
-          <div style={{ textAlign: 'center', padding: '40px', background: '#EEF2FF', borderRadius: '16px', border: '2px dashed #A78BFA', marginBottom: '40px' }}>
-            <CheckCircle size={48} color="#A78BFA" style={{ marginBottom: '15px' }} />
-            <h3 style={{ fontSize: '18px', fontWeight: 900, color: '#4F46E5' }}>All caught up!</h3>
+          <div style={{ textAlign: 'center', padding: '60px 20px', background: '#EEF2FF', borderRadius: '32px', border: '2px dashed #A78BFA', marginBottom: '60px' }}>
+            <div style={{ background: '#fff', width: '80px', height: '80px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px' }}>
+               <CheckCircle size={40} color="#6366F1" />
+            </div>
+            <h3 style={{ fontSize: '24px', fontWeight: 900, color: '#4F46E5', margin: '0 0 10px 0' }}>All caught up!</h3>
+            <p style={{ color: '#6366F1', opacity: 0.8, fontWeight: 600 }}>You've completed everything on your list.</p>
           </div>
         )}
 
-        {/* SECTION: COMPLETED */}
+        {/* SECTION 2: COMPLETED */}
         {doneList.length > 0 && (
-          <div style={{ background: '#F8FAFC', borderRadius: '24px', padding: '40px', border: '2px dashed #CBD5E1' }}>
+          <div style={{ marginTop: '40px' }}>
             <h3 style={{ fontSize: '28px', fontWeight: 900, marginBottom: '25px', display: 'flex', alignItems: 'center', gap: '12px' }}>
-              <CheckCircle size={28} color="#10B981" /> {t.completed}
+              <CheckCircle size={28} color="#10B981" /> {t.completed} ({doneList.length})
             </h3>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: '20px' }}>
               {doneList.map((asm) => (
-                <div key={asm.id} style={{ background: '#fff', padding: '24px', borderRadius: '20px', border: '1px solid #DCFCE7', position: 'relative', opacity: '0.85' }}>
-                  <button onClick={(e) => { e.stopPropagation(); setDeleteTarget(asm.id); }} style={{ position: 'absolute', top: '12px', right: '12px', background: '#F8FAFC', border: 'none', borderRadius: '10px', padding: '6px', cursor: 'pointer', color: '#94A3B8' }}><Ghost size={14} /></button>
+                <div key={asm.id} style={{ background: '#fff', padding: '24px', borderRadius: '24px', border: '1px solid #DCFCE7', position: 'relative', opacity: 0.9 }}>
+                  <button onClick={(e) => { e.stopPropagation(); setDeleteTarget(asm.id); }} style={{ position: 'absolute', top: '15px', right: '15px', background: '#F8FAFC', border: 'none', borderRadius: '10px', padding: '6px', cursor: 'pointer', color: '#94A3B8' }}>
+                    <Ghost size={16} />
+                  </button>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-                    <div style={{ width: '56px', height: '56px', background: '#DCFCE7', borderRadius: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><CheckCircle size={28} color="#10B981" /></div>
+                    <div style={{ width: '56px', height: '56px', background: '#DCFCE7', borderRadius: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <CheckCircle size={28} color="#10B981" />
+                    </div>
                     <div>
                       <h4 style={{ margin: '0 0 4px 0', fontSize: '16px', fontWeight: 900, color: '#1E293B' }}>{asm.title}</h4>
                       <span style={{ fontSize: '12px', fontWeight: 700, padding: '3px 8px', borderRadius: '8px', background: '#DCFCE7', color: '#16A34A' }}>{t.done}</span>
