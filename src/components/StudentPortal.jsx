@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import InlineHelpButton from './InlineHelpButton';
 import StudentWorksheetSolver from './StudentWorksheetSolver';
+import api from '../services/api';
 
 const translations = {
   en: {
@@ -49,12 +50,44 @@ const StudentPortal = ({ onBack, classes = [], refreshClasses }) => {
     } catch (e) { return null; }
   }, []);
 
-  const [completedAssignments, setCompletedAssignments] = useState(() => {
-    try {
-      const saved = localStorage.getItem('classABC_completed_assignments');
-      return saved ? JSON.parse(saved) : [];
-    } catch (e) { return []; }
-  });
+  const [completedAssignments, setCompletedAssignments] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  // Load completed assignments from backend on mount and when session/classes change
+  useEffect(() => {
+    const loadCompletedAssignments = async () => {
+      if (!session || !classes.length) {
+        setIsLoading(false);
+        return;
+      }
+
+      try {
+        const sId = String(session.studentId);
+        const response = await api.pbRequest(`/collections/submissions/records?filter=student_id='${sId}'`);
+        const submittedAssignmentIds = response.items?.map(item => item.assignment_id) || [];
+
+        // Also sync with localStorage as backup
+        const localCompleted = localStorage.getItem('classABC_completed_assignments');
+        const localIds = localCompleted ? JSON.parse(localCompleted) : [];
+
+        // Merge both sources, removing duplicates
+        const mergedIds = [...new Set([...submittedAssignmentIds, ...localIds.map(String)])];
+        setCompletedAssignments(mergedIds);
+
+        // Update localStorage with backend data
+        localStorage.setItem('classABC_completed_assignments', JSON.stringify(mergedIds));
+      } catch (error) {
+        console.error('Failed to load completed assignments:', error);
+        // Fallback to localStorage if backend fails
+        const localCompleted = localStorage.getItem('classABC_completed_assignments');
+        setCompletedAssignments(localCompleted ? JSON.parse(localCompleted) : []);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadCompletedAssignments();
+  }, [session, classes]);
 
   const [hiddenAssignments, setHiddenAssignments] = useState(() => {
     try {

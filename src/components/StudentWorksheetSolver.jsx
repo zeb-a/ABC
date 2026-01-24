@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { ChevronLeft, CheckCircle2, ArrowRight } from 'lucide-react';
 import api from '../services/api';
 
-const StudentWorksheetSolver = ({ worksheet, onClose, studentName, studentId, classId, onCompletion }) => {
+const StudentWorksheetSolver = ({ worksheet, onClose, studentName, studentId, classId, onCompletion, lang }) => {
   const [answers, setAnswers] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
@@ -41,7 +41,22 @@ const StudentWorksheetSolver = ({ worksheet, onClose, studentName, studentId, cl
     }
 
     setIsSubmitting(true);
-    
+
+    // Check if already submitted
+    try {
+      const existingSubmission = await api.pbRequest(
+        `/collections/submissions/records?filter=student_id='${String(studentId)}' && assignment_id='${String(worksheet.id)}'`
+      );
+
+      if (existingSubmission.items && existingSubmission.items.length > 0) {
+        alert("You have already submitted this worksheet.");
+        setIsSubmitting(false);
+        return;
+      }
+    } catch (error) {
+      console.error('Error checking existing submission:', error);
+    }
+
     const submissionData = {
       class_id: String(classId),
       assignment_id: String(worksheet.id),
@@ -62,13 +77,18 @@ const StudentWorksheetSolver = ({ worksheet, onClose, studentName, studentId, cl
       if (onCompletion) {
         onCompletion(worksheet.id);
       }
-      
+
       // We stop loading and trigger the success UI state
       setIsSubmitting(false);
-      setShowSuccess(true); 
+      setShowSuccess(true);
     } catch (error) {
       console.error('Submission Error:', error);
-      alert(`Error: ${error.message}`);
+      // Check for duplicate submission error
+      if (error.message && error.message.includes('duplicate')) {
+        alert("You have already submitted this worksheet.");
+      } else {
+        alert(`Error: ${error.message}`);
+      }
       setIsSubmitting(false);
     }
   };
