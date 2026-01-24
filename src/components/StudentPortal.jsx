@@ -80,16 +80,15 @@ const StudentPortal = ({ onBack, classes = [], refreshClasses }) => {
 
       try {
         const sId = String(session.studentId);
-        // Get current class to filter submissions by this class only
-        const currentClassId = classes.find(c => c.students?.some(stud => String(stud.id) === sId))?.id;
-
-        const filterQuery = currentClassId
-          ? `student_id='${sId}' && class_id='${currentClassId}'`
-          : `student_id='${sId}'`;
+        // Use the same filter as onCompletion - without class_id filter
+        // This ensures consistency and finds all submissions even if class_id relation is invalid
+        const filterQuery = `student_id='${sId}'`;
 
         const response = await api.pbRequest(`/collections/submissions/records?filter=${encodeURIComponent(filterQuery)}`);
+        console.log('[StudentPortal loadCompletedAssignments] Response:', response);
         // Only use backend data - these are the truly submitted assignments
         const submittedAssignmentIds = response.items?.map(item => String(item.assignment_id)) || [];
+        console.log('[StudentPortal loadCompletedAssignments] Completed IDs:', submittedAssignmentIds);
         setCompletedAssignments(submittedAssignmentIds);
 
         // Update localStorage as cache (not as a source of truth)
