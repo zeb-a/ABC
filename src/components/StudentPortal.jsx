@@ -36,13 +36,12 @@ const StudentPortal = ({ onBack, classes = [], refreshClasses }) => {
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, []);
-
+  
   const [activeWorksheet, setActiveWorksheet] = useState(null);
-  const [deleteTarget, setDeleteTarget] = useState(null);
+  const [deleteTarget, setDeleteTarget] = useState(null); 
   const [lang, setLang] = useState('en');
   const t = translations[lang];
 
-  // 1. SESSION & STORAGE
   const session = useMemo(() => {
     try {
       const saved = localStorage.getItem('classABC_student_portal');
@@ -53,7 +52,7 @@ const StudentPortal = ({ onBack, classes = [], refreshClasses }) => {
   const [completedAssignments, setCompletedAssignments] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  // 2. DATA LOADING (The "Working Logic" Fix)
+  // LOGIC FIX: Ensures only "submitted" records count, and IDs are strictly strings.
   useEffect(() => {
     const loadCompletedAssignments = async () => {
       if (!session || !classes.length) {
@@ -63,20 +62,16 @@ const StudentPortal = ({ onBack, classes = [], refreshClasses }) => {
 
       try {
         const sId = String(session.studentId);
-        // Fetch from backend
         const response = await api.pbRequest(`/collections/submissions/records?filter=student_id='${sId}'`);
         
-        // CRITICAL FIX: Robustly map IDs to strings and filter out undefined/nulls
-        // This prevents the bug where "undefined" matches "undefined" and marks everything done.
+        // This prevents 'undefined' matching 'undefined'
         const submittedAssignmentIds = response.items
           ?.map(item => item.assignment_id ? String(item.assignment_id) : null)
           .filter(id => id !== null) || [];
 
-        // Sync with localStorage
         const localCompleted = localStorage.getItem('classABC_completed_assignments');
         const localIds = localCompleted ? JSON.parse(localCompleted) : [];
 
-        // Merge Unique IDs
         const mergedIds = [...new Set([...submittedAssignmentIds, ...localIds.map(String)])];
         setCompletedAssignments(mergedIds);
         localStorage.setItem('classABC_completed_assignments', JSON.stringify(mergedIds));
@@ -99,7 +94,6 @@ const StudentPortal = ({ onBack, classes = [], refreshClasses }) => {
     } catch (e) { return []; }
   });
 
-  // 3. SCANNER & SORTING
   const { liveClass, studentAssignments, currentStudent } = useMemo(() => {
     if (!session || !classes.length) return { liveClass: null, studentAssignments: [], currentStudent: null };
 
@@ -109,15 +103,18 @@ const StudentPortal = ({ onBack, classes = [], refreshClasses }) => {
 
     const assignments = (foundClass.assignments || [])
       .filter(asm => {
-        if (!asm || hiddenAssignments.includes(asm.id)) return false;
+        if (!asm || hiddenAssignments.includes(asm.id)) return false; 
         const isGlobal = asm.assignedToAll === true || asm.assignedTo === 'all' || !asm.assignedTo;
         const isSpecific = Array.isArray(asm.assignedTo) && asm.assignedTo.some(id => String(id) === sId);
         return isGlobal || isSpecific;
       })
       .sort((a, b) => {
-        const dateA = new Date(b.created || b.id).getTime();
-        const dateB = new Date(a.created || a.id).getTime();
-        return dateA - dateB;
+        const isCompletedA = completedAssignments.includes(String(a.id));
+        const isCompletedB = completedAssignments.includes(String(b.id));
+        if (isCompletedA !== isCompletedB) return isCompletedA ? 1 : -1;
+        const dateA = new Date(a.created || a.id).getTime();
+        const dateB = new Date(b.created || b.id).getTime();
+        return dateB - dateA;
       });
 
     return { 
@@ -125,9 +122,8 @@ const StudentPortal = ({ onBack, classes = [], refreshClasses }) => {
       studentAssignments: assignments, 
       currentStudent: foundClass.students?.find(s => String(s.id) === sId) 
     };
-  }, [classes, session, hiddenAssignments]);
+  }, [classes, session, hiddenAssignments, completedAssignments]);
 
-  // 4. SEPARATE LISTS (Derived from the verified completedAssignments)
   const todoList = studentAssignments.filter(asm => !completedAssignments.includes(String(asm.id)));
   const completedList = studentAssignments.filter(asm => completedAssignments.includes(String(asm.id)));
 
@@ -164,7 +160,6 @@ const StudentPortal = ({ onBack, classes = [], refreshClasses }) => {
 
   return (
     <div className="student-portal" style={{ background: '#F8FAFC', minHeight: '100vh', fontFamily: "'Inter', sans-serif" }}>
-      {/* FULL CSS BLOCK RESTORED */}
       <style>{`
         .student-portal .topBar { padding: 12px 16px !important; }
         .student-portal h2 { font-size: 18px !important; }
@@ -177,7 +172,6 @@ const StudentPortal = ({ onBack, classes = [], refreshClasses }) => {
         }
       `}</style>
       
-      {/* MODERN HIDE MODAL */}
       {deleteTarget && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(15, 23, 42, 0.6)', backdropFilter: 'blur(8px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2000 }}>
           <div style={{ background: '#fff', padding: '40px', borderRadius: '32px', maxWidth: '450px', width: '90%', textAlign: 'center', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)' }}>
@@ -198,7 +192,6 @@ const StudentPortal = ({ onBack, classes = [], refreshClasses }) => {
         </div>
       )}
 
-      {/* NAVBAR */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '20px 40px', background: 'rgba(255,255,255,0.9)', backdropFilter: 'blur(10px)', borderBottom: '1px solid #E2E8F0', position: 'sticky', top: 0, zIndex: 100 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           <div>
@@ -218,19 +211,16 @@ const StudentPortal = ({ onBack, classes = [], refreshClasses }) => {
       </div>
 
       <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '40px 20px' }}>
-        {/* STATS */}
         <div style={{ display: 'flex', gap: '20px', marginBottom: '40px', flexWrap: 'wrap' }}>
           <StatCard icon={<Star color="#F59E0B" fill="#F59E0B" size={32} />} val={currentStudent?.score || 0} label={t.points} />
           <StatCard icon={<Trophy color="#10B981" fill="#10B981" size={32} />} val={completedList.length} label={t.completed} />
           <StatCard icon={<BookOpen color="#6366F1" size={32} />} val={todoList.length} label={t.todo} />
         </div>
 
-        {/* --- SECTION 1: TO DO (Styled from Screenshot) --- */}
         <h3 style={{ fontSize: '28px', fontWeight: 900, marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '12px' }}>
           <BookOpen size={28} color="#6366F1" /> {t.todo}
         </h3>
 
-        {/* If there are items in the Todo List */}
         {todoList.length > 0 ? (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: '25px', marginBottom: '60px' }}>
             {todoList.map((asm) => (
@@ -263,9 +253,8 @@ const StudentPortal = ({ onBack, classes = [], refreshClasses }) => {
             ))}
           </div>
         ) : (
-          /* EMPTY STATE CARD (Indigo Dashed - Matches Screenshot) */
           <div style={{ textAlign: 'center', padding: '40px', background: '#EEF2FF', borderRadius: '16px', border: '2px dashed #A78BFA', marginBottom: '40px' }}>
-            <div style={{ background: '#fff', width: '80px', height: '80px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px', boxShadow: '0 10px 25px rgba(99, 102, 241, 0.1)' }}>
+             <div style={{ background: '#fff', width: '80px', height: '80px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px', boxShadow: '0 10px 25px rgba(99, 102, 241, 0.1)' }}>
               <CheckCircle size={40} color="#6366F1" />
             </div>
             <h3 style={{ fontSize: '18px', fontWeight: 900, color: '#4F46E5', margin: '0 0 10px 0' }}>All caught up!</h3>
@@ -273,13 +262,11 @@ const StudentPortal = ({ onBack, classes = [], refreshClasses }) => {
           </div>
         )}
 
-        {/* --- SECTION 2: COMPLETED (Green Theme - Matches Screenshot) --- */}
         {completedList.length > 0 && (
           <div style={{ background: '#F8FAFC', borderRadius: '24px', padding: '40px', border: '2px dashed #CBD5E1' }}>
             <h3 style={{ fontSize: '28px', fontWeight: 900, marginBottom: '25px', display: 'flex', alignItems: 'center', gap: '12px' }}>
               <CheckCircle size={28} color="#10B981" /> {t.completed} <span style={{ fontSize: '16px', fontWeight: 600, color: '#94A3B8', marginLeft: '10px' }}>({completedList.length})</span>
             </h3>
-
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: '20px' }}>
               {completedList.map((asm) => (
                 <div
@@ -292,8 +279,6 @@ const StudentPortal = ({ onBack, classes = [], refreshClasses }) => {
                   <button
                     onClick={(e) => { e.stopPropagation(); setDeleteTarget(asm.id); }}
                     style={{ position: 'absolute', top: '12px', right: '12px', background: '#FEF2F2', border: 'none', borderRadius: '10px', padding: '6px', cursor: 'pointer', color: '#E11D48', transition: 'all 0.2s' }}
-                    onMouseEnter={(e) => e.currentTarget.style.background = '#FEE2E2'}
-                    onMouseLeave={(e) => e.currentTarget.style.background = '#FEF2F2'}
                   >
                     <Ghost size={14} />
                   </button>
@@ -314,7 +299,6 @@ const StudentPortal = ({ onBack, classes = [], refreshClasses }) => {
           </div>
         )}
 
-        {/* GLOBAL EMPTY STATE */}
         {studentAssignments.length === 0 && (
           <div style={{ textAlign: 'center', padding: '100px 20px', background: '#fff', borderRadius: '32px', border: '2px dashed #E2E8F0', marginTop: '40px' }}>
             <Ghost size={60} color="#CBD5E1" style={{ marginBottom: '20px' }} />
