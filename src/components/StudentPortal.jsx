@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import InlineHelpButton from './InlineHelpButton';
 import StudentWorksheetSolver from './StudentWorksheetSolver';
+import api from '../services/api';
 
 const translations = {
   en: {
@@ -35,17 +36,17 @@ const StudentPortal = ({ onBack, classes = [], refreshClasses }) => {
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, []);
+
   const [activeWorksheet, setActiveWorksheet] = useState(null);
-  const [deleteTarget, setDeleteTarget] = useState(null); // For the modern modal
+  const [deleteTarget, setDeleteTarget] = useState(null); 
   const [lang, setLang] = useState('en');
   const t = translations[lang];
 
-  // 1. SESSION & STORAGE
+  // 1. SESSION & STORAGE (Using the Reference File Logic)
   const session = useMemo(() => {
     try {
       const saved = localStorage.getItem('classABC_student_portal');
       return saved ? JSON.parse(saved) : null;
-    // eslint-disable-next-line no-unused-vars
     } catch (e) { return null; }
   }, []);
 
@@ -56,15 +57,38 @@ const StudentPortal = ({ onBack, classes = [], refreshClasses }) => {
     } catch (e) { return []; }
   });
 
+  // BACKGROUND SYNC: Strictly check for 'submitted' status so tasks don't jump early
+  useEffect(() => {
+    const syncWithDatabase = async () => {
+      if (!session) return;
+      try {
+        const sId = String(session.studentId);
+        // CRITICAL FIX: Only fetch items where status is explicitly 'submitted'
+        const response = await api.pbRequest(`/collections/submissions/records?filter=(student_id='${sId}' && status='submitted')`);
+        const serverDoneIds = (response.items || []).map(item => String(item.assignment_id));
+        
+        if (serverDoneIds.length > 0) {
+          setCompletedAssignments(prev => {
+            const combined = [...new Set([...prev, ...serverDoneIds])];
+            localStorage.setItem('classABC_completed_assignments', JSON.stringify(combined));
+            return combined;
+          });
+        }
+      } catch (err) {
+        console.log("Offline or sync pending...");
+      }
+    };
+    syncWithDatabase();
+  }, [session]);
+
   const [hiddenAssignments, setHiddenAssignments] = useState(() => {
     try {
       const saved = localStorage.getItem('classABC_hidden_assignments');
       return saved ? JSON.parse(saved) : [];
-    // eslint-disable-next-line no-unused-vars
     } catch (e) { return []; }
   });
 
-  // 2. DATA SCANNER (With Sorting & Hiding Logic)
+  // 2. DATA PROCESSING (Filtering logic from your Reference File)
   const { liveClass, studentAssignments, currentStudent } = useMemo(() => {
     if (!session || !classes.length) return { liveClass: null, studentAssignments: [], currentStudent: null };
 
@@ -74,17 +98,12 @@ const StudentPortal = ({ onBack, classes = [], refreshClasses }) => {
 
     const assignments = (foundClass.assignments || [])
       .filter(asm => {
-        if (!asm || hiddenAssignments.includes(asm.id)) return false; // REMOVE HIDDEN ITEMS
+        if (!asm || hiddenAssignments.includes(asm.id)) return false; 
         const isGlobal = asm.assignedToAll === true || asm.assignedTo === 'all' || !asm.assignedTo;
         const isSpecific = Array.isArray(asm.assignedTo) && asm.assignedTo.some(id => String(id) === sId);
         return isGlobal || isSpecific;
       })
-      .sort((a, b) => {
-        // SORTING: Newest on top
-        const dateA = new Date(b.created || b.id).getTime();
-        const dateB = new Date(a.created || a.id).getTime();
-        return dateA - dateB;
-      });
+      .sort((a, b) => new Date(b.created || b.id) - new Date(a.created || a.id));
 
     return { 
       liveClass: foundClass, 
@@ -93,9 +112,9 @@ const StudentPortal = ({ onBack, classes = [], refreshClasses }) => {
     };
   }, [classes, session, hiddenAssignments]);
 
-  // 3. CORRECT TO-DO CALCULATION (Prevents negative numbers)
-  const todoCount = studentAssignments.filter(asm => !completedAssignments.includes(asm.id)).length;
-  const completedCount = studentAssignments.filter(asm => completedAssignments.includes(asm.id)).length;
+  // Derived lists for the "Separate Sections" UI
+  const todoList = studentAssignments.filter(asm => !completedAssignments.includes(String(asm.id)));
+  const doneList = studentAssignments.filter(asm => completedAssignments.includes(String(asm.id)));
 
   const handleHideAssignment = () => {
     if (!deleteTarget) return;
@@ -120,7 +139,8 @@ const StudentPortal = ({ onBack, classes = [], refreshClasses }) => {
         studentId={currentStudent?.id || session.studentId}
         classId={liveClass?.id}
         onCompletion={(id) => {
-          const newList = [...completedAssignments, id];
+          // This is the Reference Logic that makes it work
+          const newList = [...new Set([...completedAssignments, String(id)])];
           setCompletedAssignments(newList);
           localStorage.setItem('classABC_completed_assignments', JSON.stringify(newList));
         }}
@@ -142,7 +162,7 @@ const StudentPortal = ({ onBack, classes = [], refreshClasses }) => {
         }
       `}</style>
       
-      {/* --- MODERN HIDE MODAL --- */}
+      {/* HIDE TASK MODAL */}
       {deleteTarget && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(15, 23, 42, 0.6)', backdropFilter: 'blur(8px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2000 }}>
           <div style={{ background: '#fff', padding: '40px', borderRadius: '32px', maxWidth: '450px', width: '90%', textAlign: 'center', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)' }}>
@@ -152,18 +172,14 @@ const StudentPortal = ({ onBack, classes = [], refreshClasses }) => {
             <h2 style={{ fontSize: '24px', fontWeight: 900, marginBottom: '10px' }}>{t.hideTask}</h2>
             <p style={{ color: '#64748B', lineHeight: 1.6, marginBottom: '30px' }}>{t.hideWarn}</p>
             <div style={{ display: 'flex', gap: '15px' }}>
-              <button onClick={() => setDeleteTarget(null)} style={{ flex: 1, padding: '15px', borderRadius: '16px', border: '1px solid #E2E8F0', background: '#fff', fontWeight: 700, cursor: 'pointer' }}>
-                {t.cancel}
-              </button>
-              <button onClick={handleHideAssignment} style={{ flex: 1, padding: '15px', borderRadius: '16px', border: 'none', background: '#EF4444', color: '#fff', fontWeight: 700, cursor: 'pointer' }}>
-                {t.yesHide}
-              </button>
+              <button onClick={() => setDeleteTarget(null)} style={{ flex: 1, padding: '15px', borderRadius: '16px', border: '1px solid #E2E8F0', background: '#fff', fontWeight: 700, cursor: 'pointer' }}>{t.cancel}</button>
+              <button onClick={handleHideAssignment} style={{ flex: 1, padding: '15px', borderRadius: '16px', border: 'none', background: '#EF4444', color: '#fff', fontWeight: 700, cursor: 'pointer' }}>{t.yesHide}</button>
             </div>
           </div>
         </div>
       )}
 
-      {/* --- NAVBAR --- */}
+      {/* NAVBAR */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '20px 40px', background: 'rgba(255,255,255,0.9)', backdropFilter: 'blur(10px)', borderBottom: '1px solid #E2E8F0', position: 'sticky', top: 0, zIndex: 100 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           <div>
@@ -176,8 +192,7 @@ const StudentPortal = ({ onBack, classes = [], refreshClasses }) => {
           <button onClick={() => setLang(lang === 'en' ? 'zh' : 'en')} style={{ background: '#F1F5F9', border: 'none', padding: '12px 20px', borderRadius: '16px', fontWeight: 800, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px' }}>
             <Globe size={18} /> {t.langToggle}
           </button>
-          {/* Refresh button removed on mobile/student portal per Phase 1 UX decision */}
-          <button onClick={handleLogout} style={{minWidth: isMobile ? '48px' : 'auto', background: 'linear-gradient(135deg, #6366F1 0%, #8B5CF6 100%)', color: '#fff', border: 'none', borderRadius: '16px', fontWeight: 800, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: isMobile ? '0' : '8px', padding: isMobile ? '12px' : '12px 24px', }}>
+          <button onClick={handleLogout} style={{ minWidth: isMobile ? '48px' : 'auto', background: 'linear-gradient(135deg, #6366F1 0%, #8B5CF6 100%)', color: '#fff', border: 'none', borderRadius: '16px', fontWeight: 800, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: isMobile ? '0' : '8px', padding: isMobile ? '12px' : '12px 24px' }}>
             <LogOut size={isMobile ? 22 : 18} /> {!isMobile && t.logout}
           </button>
         </div>
@@ -187,59 +202,56 @@ const StudentPortal = ({ onBack, classes = [], refreshClasses }) => {
         {/* STATS */}
         <div style={{ display: 'flex', gap: '20px', marginBottom: '40px', flexWrap: 'wrap' }}>
           <StatCard icon={<Star color="#F59E0B" fill="#F59E0B" size={32} />} val={currentStudent?.score || 0} label={t.points} />
-          <StatCard icon={<Trophy color="#10B981" fill="#10B981" size={32} />} val={completedCount} label={t.completed} />
-          <StatCard icon={<BookOpen color="#6366F1" size={32} />} val={todoCount} label={t.todo} />
+          <StatCard icon={<Trophy color="#10B981" fill="#10B981" size={32} />} val={doneList.length} label={t.completed} />
+          <StatCard icon={<BookOpen color="#6366F1" size={32} />} val={todoList.length} label={t.todo} />
         </div>
 
+        {/* SECTION: TO DO */}
         <h3 style={{ fontSize: '28px', fontWeight: 900, marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <BookOpen size={28} color="#6366F1" /> {t.title}
+          <BookOpen size={28} color="#6366F1" /> {t.todo}
         </h3>
 
-        {/* ASSIGNMENTS GRID */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: '25px' }}>
-          {studentAssignments.map((asm) => {
-            const isCompleted = completedAssignments.includes(asm.id);
-            return (
-              <div 
-                key={asm.id} 
-                onClick={() => !isCompleted && setActiveWorksheet(asm)} 
-                style={{ 
-                  background: '#fff', padding: '28px', borderRadius: '28px', border: '1px solid #E2E8F0', 
-                  cursor: isCompleted ? 'default' : 'pointer', position: 'relative', transition: 'transform 0.2s' 
-                }}
-              >
-                {isCompleted && (
-                  <button 
-                    onClick={(e) => { e.stopPropagation(); setDeleteTarget(asm.id); }} 
-                    style={{ position: 'absolute', top: '15px', right: '15px', background: '#F8FAFC', border: 'none', borderRadius: '12px', padding: '8px', cursor: 'pointer', color: '#94A3B8' }}
-                  >
-                    <Ghost size={18} />
-                  </button>
-                )}
+        {todoList.length > 0 ? (
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: '25px', marginBottom: '60px' }}>
+            {todoList.map((asm) => (
+              <div key={asm.id} onClick={() => setActiveWorksheet(asm)} style={{ background: '#fff', padding: '28px', borderRadius: '28px', border: '1px solid #E2E8F0', cursor: 'pointer', transition: 'transform 0.2s', boxShadow: '0 2px 10px rgba(0,0,0,0.03)' }} onMouseEnter={(e) => e.currentTarget.style.transform = 'translateY(-4px)'} onMouseLeave={(e) => e.currentTarget.style.transform = 'translateY(0)'}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
-                  <div style={{ width: '65px', height: '65px', background: isCompleted ? '#DCFCE7' : '#EEF2FF', borderRadius: '20px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    {isCompleted ? <CheckCircle size={32} color="#10B981" /> : <BookOpen size={32} color="#4F46E5" />}
-                  </div>
+                  <div style={{ width: '65px', height: '65px', background: '#EEF2FF', borderRadius: '20px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><BookOpen size={32} color="#4F46E5" /></div>
                   <div>
                     <h4 style={{ margin: '0 0 5px 0', fontSize: '18px', fontWeight: 900 }}>{asm.title}</h4>
-                    <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
-                      <span style={{ fontSize: '13px', color: '#64748B' }}>{asm.questions?.length || 0} {t.questions}</span>
-                      <span style={{ fontSize: '12px', fontWeight: 800, padding: '4px 10px', borderRadius: '10px', background: isCompleted ? '#DCFCE7' : '#EEF2FF', color: isCompleted ? '#16A34A' : '#4F46E5' }}>
-                        {isCompleted ? t.done : t.open}
-                      </span>
-                    </div>
+                    <span style={{ fontSize: '13px', color: '#64748B' }}>{asm.questions?.length || 0} {t.questions}</span>
                   </div>
                 </div>
               </div>
-            );
-          })}
-        </div>
+            ))}
+          </div>
+        ) : (
+          <div style={{ textAlign: 'center', padding: '40px', background: '#EEF2FF', borderRadius: '16px', border: '2px dashed #A78BFA', marginBottom: '40px' }}>
+            <CheckCircle size={48} color="#A78BFA" style={{ marginBottom: '15px' }} />
+            <h3 style={{ fontSize: '18px', fontWeight: 900, color: '#4F46E5' }}>All caught up!</h3>
+          </div>
+        )}
 
-        {studentAssignments.length === 0 && (
-          <div style={{ textAlign: 'center', padding: '100px 20px', background: '#fff', borderRadius: '32px', border: '2px dashed #E2E8F0' }}>
-            <Ghost size={60} color="#CBD5E1" style={{ marginBottom: '20px' }} />
-            <h3 style={{ fontSize: '24px', color: '#1E293B' }}>{t.noAsn}</h3>
-            <p style={{ color: '#64748B' }}>{t.refreshPrompt}</p>
+        {/* SECTION: COMPLETED */}
+        {doneList.length > 0 && (
+          <div style={{ background: '#F8FAFC', borderRadius: '24px', padding: '40px', border: '2px dashed #CBD5E1' }}>
+            <h3 style={{ fontSize: '28px', fontWeight: 900, marginBottom: '25px', display: 'flex', alignItems: 'center', gap: '12px' }}>
+              <CheckCircle size={28} color="#10B981" /> {t.completed}
+            </h3>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: '20px' }}>
+              {doneList.map((asm) => (
+                <div key={asm.id} style={{ background: '#fff', padding: '24px', borderRadius: '20px', border: '1px solid #DCFCE7', position: 'relative', opacity: '0.85' }}>
+                  <button onClick={(e) => { e.stopPropagation(); setDeleteTarget(asm.id); }} style={{ position: 'absolute', top: '12px', right: '12px', background: '#F8FAFC', border: 'none', borderRadius: '10px', padding: '6px', cursor: 'pointer', color: '#94A3B8' }}><Ghost size={14} /></button>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                    <div style={{ width: '56px', height: '56px', background: '#DCFCE7', borderRadius: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><CheckCircle size={28} color="#10B981" /></div>
+                    <div>
+                      <h4 style={{ margin: '0 0 4px 0', fontSize: '16px', fontWeight: 900, color: '#1E293B' }}>{asm.title}</h4>
+                      <span style={{ fontSize: '12px', fontWeight: 700, padding: '3px 8px', borderRadius: '8px', background: '#DCFCE7', color: '#16A34A' }}>{t.done}</span>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
         )}
       </div>
@@ -252,7 +264,7 @@ const StatCard = ({ icon, val, label }) => (
     {icon}
     <div>
       <div style={{ fontSize: '32px', fontWeight: 900 }}>{val}</div>
-      <div style={{ fontSize: '12px', color: '#64748B', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.5px' }}>{label}</div>
+      <div style={{ fontSize: '12px', color: '#64748B', fontWeight: 800, textTransform: 'uppercase' }}>{label}</div>
     </div>
   </div>
 );
