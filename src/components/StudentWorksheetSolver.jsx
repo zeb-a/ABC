@@ -42,20 +42,33 @@ const StudentWorksheetSolver = ({ worksheet, onClose, studentName, studentId, cl
   };
 
   const handleSubmit = async () => {
- 
+    console.log('Submission data:', { classId, studentId, worksheetId: worksheet.id, classType: typeof classId });
 
-    // Make sure we have a valid worksheet ID - try multiple possible ID fields
-    let worksheetId = worksheet.id || worksheet.assignment_id || worksheet._id;
+    if (!classId) {
+      alert("Error: Class ID is missing. Please refresh and try again.");
+      return;
+    }
 
-    // If still no ID, try to find it from the questions or generate one
+    // Make sure we have a valid worksheet ID - use worksheet.id as the primary source
+    // This matches the asm.id from StudentPortal's studentAssignments array
+    let worksheetId = worksheet.id;
+
+    // Fallback: check for assignment_id if worksheet.id is missing
     if (!worksheetId) {
-      // Try using title + first question as a fallback ID
-      if (worksheet.title && worksheet.questions && worksheet.questions[0]) {
-        worksheetId = `${worksheet.title}_${worksheet.questions[0].id}`;
-      } else if (worksheet.title) {
+      worksheetId = worksheet.assignment_id;
+    }
+
+    // Last resort: check for _id
+    if (!worksheetId) {
+      worksheetId = worksheet._id;
+    }
+
+    // If still no ID, we need to generate one but log a warning
+    if (!worksheetId) {
+      console.warn('WARNING: No worksheet ID found. Falling back to title-based ID.');
+      if (worksheet.title) {
         worksheetId = worksheet.title;
       } else {
-        // Last resort - generate from timestamp
         worksheetId = Date.now().toString();
       }
     }
@@ -84,6 +97,10 @@ const StudentWorksheetSolver = ({ worksheet, onClose, studentName, studentId, cl
       if (existingSubmission.items && existingSubmission.items.length > 0) {
         alert("You have already submitted this worksheet.");
         setIsSubmitting(false);
+        // Still call onCompletion to mark the assignment as completed in the UI
+        if (onCompletion) {
+          onCompletion(worksheetId);
+        }
         return;
       }
     } catch (error) {
