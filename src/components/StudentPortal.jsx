@@ -154,8 +154,8 @@ const StudentPortal = ({ onBack, classes = [], refreshClasses }) => {
   }, [classes, session, hiddenAssignments, completedAssignments]);
 
   // 3. CORRECT TO-DO CALCULATION (Prevents negative numbers)
-  const todoCount = studentAssignments.filter(asm => !completedAssignments.includes(asm.id)).length;
-  const completedCount = studentAssignments.filter(asm => completedAssignments.includes(asm.id)).length;
+  const todoCount = studentAssignments.filter(asm => !completedAssignments.includes(String(asm.id))).length;
+  const completedCount = studentAssignments.filter(asm => completedAssignments.includes(String(asm.id))).length;
 
   const handleHideAssignment = () => {
     if (!deleteTarget) return;
@@ -180,7 +180,7 @@ const StudentPortal = ({ onBack, classes = [], refreshClasses }) => {
         studentId={currentStudent?.id || session.studentId}
         classId={liveClass?.id}
         onCompletion={(id) => {
-          const newList = [...completedAssignments, id];
+          const newList = [...completedAssignments, String(id)];
           setCompletedAssignments(newList);
           localStorage.setItem('classABC_completed_assignments', JSON.stringify(newList));
         }}
