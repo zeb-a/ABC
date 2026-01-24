@@ -35,17 +35,17 @@ const StudentPortal = ({ onBack, classes = [], refreshClasses }) => {
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, []);
-
   const [activeWorksheet, setActiveWorksheet] = useState(null);
-  const [deleteTarget, setDeleteTarget] = useState(null); 
+  const [deleteTarget, setDeleteTarget] = useState(null); // For the modern modal
   const [lang, setLang] = useState('en');
   const t = translations[lang];
 
-  // --- 1. LOGIC COPIED EXACTLY FROM YOUR REFERENCE ---
+  // 1. SESSION & STORAGE
   const session = useMemo(() => {
     try {
       const saved = localStorage.getItem('classABC_student_portal');
       return saved ? JSON.parse(saved) : null;
+    // eslint-disable-next-line no-unused-vars
     } catch (e) { return null; }
   }, []);
 
@@ -60,9 +60,11 @@ const StudentPortal = ({ onBack, classes = [], refreshClasses }) => {
     try {
       const saved = localStorage.getItem('classABC_hidden_assignments');
       return saved ? JSON.parse(saved) : [];
+    // eslint-disable-next-line no-unused-vars
     } catch (e) { return []; }
   });
 
+  // 2. DATA SCANNER (With Sorting & Hiding Logic)
   const { liveClass, studentAssignments, currentStudent } = useMemo(() => {
     if (!session || !classes.length) return { liveClass: null, studentAssignments: [], currentStudent: null };
 
@@ -72,12 +74,13 @@ const StudentPortal = ({ onBack, classes = [], refreshClasses }) => {
 
     const assignments = (foundClass.assignments || [])
       .filter(asm => {
-        if (!asm || hiddenAssignments.includes(asm.id)) return false; 
+        if (!asm || hiddenAssignments.includes(asm.id)) return false; // REMOVE HIDDEN ITEMS
         const isGlobal = asm.assignedToAll === true || asm.assignedTo === 'all' || !asm.assignedTo;
         const isSpecific = Array.isArray(asm.assignedTo) && asm.assignedTo.some(id => String(id) === sId);
         return isGlobal || isSpecific;
       })
       .sort((a, b) => {
+        // SORTING: Newest on top
         const dateA = new Date(b.created || b.id).getTime();
         const dateB = new Date(a.created || a.id).getTime();
         return dateA - dateB;
@@ -90,12 +93,12 @@ const StudentPortal = ({ onBack, classes = [], refreshClasses }) => {
     };
   }, [classes, session, hiddenAssignments]);
 
-  // --- 2. SEPARATING THE LISTS FOR THE UI ---
+  // --- SEPARATION LOGIC ---
   const todoList = useMemo(() => 
     studentAssignments.filter(asm => !completedAssignments.includes(asm.id)),
   [studentAssignments, completedAssignments]);
 
-  const doneList = useMemo(() => 
+  const completedList = useMemo(() => 
     studentAssignments.filter(asm => completedAssignments.includes(asm.id)),
   [studentAssignments, completedAssignments]);
 
@@ -154,8 +157,12 @@ const StudentPortal = ({ onBack, classes = [], refreshClasses }) => {
             <h2 style={{ fontSize: '24px', fontWeight: 900, marginBottom: '10px' }}>{t.hideTask}</h2>
             <p style={{ color: '#64748B', lineHeight: 1.6, marginBottom: '30px' }}>{t.hideWarn}</p>
             <div style={{ display: 'flex', gap: '15px' }}>
-              <button onClick={() => setDeleteTarget(null)} style={{ flex: 1, padding: '15px', borderRadius: '16px', border: '1px solid #E2E8F0', background: '#fff', fontWeight: 700, cursor: 'pointer' }}>{t.cancel}</button>
-              <button onClick={handleHideAssignment} style={{ flex: 1, padding: '15px', borderRadius: '16px', border: 'none', background: '#EF4444', color: '#fff', fontWeight: 700, cursor: 'pointer' }}>{t.yesHide}</button>
+              <button onClick={() => setDeleteTarget(null)} style={{ flex: 1, padding: '15px', borderRadius: '16px', border: '1px solid #E2E8F0', background: '#fff', fontWeight: 700, cursor: 'pointer' }}>
+                {t.cancel}
+              </button>
+              <button onClick={handleHideAssignment} style={{ flex: 1, padding: '15px', borderRadius: '16px', border: 'none', background: '#EF4444', color: '#fff', fontWeight: 700, cursor: 'pointer' }}>
+                {t.yesHide}
+              </button>
             </div>
           </div>
         </div>
@@ -174,7 +181,7 @@ const StudentPortal = ({ onBack, classes = [], refreshClasses }) => {
           <button onClick={() => setLang(lang === 'en' ? 'zh' : 'en')} style={{ background: '#F1F5F9', border: 'none', padding: '12px 20px', borderRadius: '16px', fontWeight: 800, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px' }}>
             <Globe size={18} /> {t.langToggle}
           </button>
-          <button onClick={handleLogout} style={{ minWidth: isMobile ? '48px' : 'auto', background: 'linear-gradient(135deg, #6366F1 0%, #8B5CF6 100%)', color: '#fff', border: 'none', borderRadius: '16px', fontWeight: 800, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: isMobile ? '0' : '8px', padding: isMobile ? '12px' : '12px 24px' }}>
+          <button onClick={handleLogout} style={{minWidth: isMobile ? '48px' : 'auto', background: 'linear-gradient(135deg, #6366F1 0%, #8B5CF6 100%)', color: '#fff', border: 'none', borderRadius: '16px', fontWeight: 800, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: isMobile ? '0' : '8px', padding: isMobile ? '12px' : '12px 24px', }}>
             <LogOut size={isMobile ? 22 : 18} /> {!isMobile && t.logout}
           </button>
         </div>
@@ -184,7 +191,7 @@ const StudentPortal = ({ onBack, classes = [], refreshClasses }) => {
         {/* STATS */}
         <div style={{ display: 'flex', gap: '20px', marginBottom: '40px', flexWrap: 'wrap' }}>
           <StatCard icon={<Star color="#F59E0B" fill="#F59E0B" size={32} />} val={currentStudent?.score || 0} label={t.points} />
-          <StatCard icon={<Trophy color="#10B981" fill="#10B981" size={32} />} val={doneList.length} label={t.completed} />
+          <StatCard icon={<Trophy color="#10B981" fill="#10B981" size={32} />} val={completedList.length} label={t.completed} />
           <StatCard icon={<BookOpen color="#6366F1" size={32} />} val={todoList.length} label={t.todo} />
         </div>
 
@@ -193,64 +200,82 @@ const StudentPortal = ({ onBack, classes = [], refreshClasses }) => {
           <BookOpen size={28} color="#6366F1" /> {t.todo}
         </h3>
 
-        {todoList.length > 0 ? (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: '25px', marginBottom: '60px' }}>
-            {todoList.map((asm) => (
-              <div key={asm.id} onClick={() => setActiveWorksheet(asm)} style={{ background: '#fff', padding: '28px', borderRadius: '28px', border: '1px solid #E2E8F0', cursor: 'pointer', transition: 'transform 0.2s', boxShadow: '0 2px 10px rgba(0,0,0,0.03)' }} onMouseEnter={(e) => e.currentTarget.style.transform = 'translateY(-4px)'} onMouseLeave={(e) => e.currentTarget.style.transform = 'translateY(0)'}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
-                  <div style={{ width: '65px', height: '65px', background: '#EEF2FF', borderRadius: '20px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <BookOpen size={32} color="#4F46E5" />
-                  </div>
-                  <div>
-                    <h4 style={{ margin: '0 0 5px 0', fontSize: '18px', fontWeight: 900 }}>{asm.title}</h4>
-                    <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
-                      <span style={{ fontSize: '13px', color: '#64748B' }}>{asm.questions?.length || 0} {t.questions}</span>
-                      <span style={{ fontSize: '12px', fontWeight: 800, padding: '4px 10px', borderRadius: '10px', background: '#EEF2FF', color: '#4F46E5' }}>{t.open}</span>
-                    </div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: '25px', marginBottom: '50px' }}>
+          {todoList.map((asm) => (
+            <div 
+              key={asm.id} 
+              onClick={() => setActiveWorksheet(asm)} 
+              style={{ 
+                background: '#fff', padding: '28px', borderRadius: '28px', border: '1px solid #E2E8F0', 
+                cursor: 'pointer', position: 'relative', transition: 'transform 0.2s' 
+              }}
+              onMouseEnter={(e) => e.currentTarget.style.transform = 'translateY(-4px)'}
+              onMouseLeave={(e) => e.currentTarget.style.transform = 'translateY(0)'}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
+                <div style={{ width: '65px', height: '65px', background: '#EEF2FF', borderRadius: '20px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <BookOpen size={32} color="#4F46E5" />
+                </div>
+                <div>
+                  <h4 style={{ margin: '0 0 5px 0', fontSize: '18px', fontWeight: 900 }}>{asm.title}</h4>
+                  <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                    <span style={{ fontSize: '13px', color: '#64748B' }}>{asm.questions?.length || 0} {t.questions}</span>
+                    <span style={{ fontSize: '12px', fontWeight: 800, padding: '4px 10px', borderRadius: '10px', background: '#EEF2FF', color: '#4F46E5' }}>
+                      {t.open}
+                    </span>
                   </div>
                 </div>
               </div>
-            ))}
-          </div>
-        ) : (
-          /* MODERN ALL CAUGHT UP CARD */
-          <div style={{ textAlign: 'center', padding: '60px 20px', background: '#EEF2FF', borderRadius: '32px', border: '2px dashed #A78BFA', marginBottom: '60px' }}>
-            <div style={{ background: '#fff', width: '80px', height: '80px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px' }}>
-               <CheckCircle size={40} color="#6366F1" />
             </div>
-            <h3 style={{ fontSize: '24px', fontWeight: 900, color: '#4F46E5', margin: '0 0 10px 0' }}>All caught up!</h3>
-            <p style={{ color: '#6366F1', opacity: 0.8, fontWeight: 600 }}>You've finished everything on your list.</p>
-          </div>
-        )}
+          ))}
+          {todoList.length === 0 && (
+            <div style={{ gridColumn: '1/-1', textAlign: 'center', padding: '40px', background: '#fff', borderRadius: '28px', border: '1px dashed #CBD5E1', color: '#64748B' }}>
+              All caught up! No pending assignments.
+            </div>
+          )}
+        </div>
 
         {/* --- SECTION 2: COMPLETED --- */}
-        {doneList.length > 0 && (
-          <div style={{ marginTop: '40px' }}>
-            <h3 style={{ fontSize: '28px', fontWeight: 900, marginBottom: '25px', display: 'flex', alignItems: 'center', gap: '12px' }}>
-              <CheckCircle size={28} color="#10B981" /> {t.completed} ({doneList.length})
+        {completedList.length > 0 && (
+          <>
+            <h3 style={{ fontSize: '28px', fontWeight: 900, marginTop: '40px', marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '12px' }}>
+              <CheckCircle size={28} color="#10B981" /> {t.completed}
             </h3>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: '20px' }}>
-              {doneList.map((asm) => (
-                <div key={asm.id} style={{ background: '#fff', padding: '24px', borderRadius: '24px', border: '1px solid #DCFCE7', position: 'relative', opacity: 0.95 }}>
-                  <button onClick={(e) => { e.stopPropagation(); setDeleteTarget(asm.id); }} style={{ position: 'absolute', top: '15px', right: '15px', background: '#F8FAFC', border: 'none', borderRadius: '10px', padding: '6px', cursor: 'pointer', color: '#94A3B8' }}>
-                    <Ghost size={16} />
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: '25px' }}>
+              {completedList.map((asm) => (
+                <div 
+                  key={asm.id} 
+                  style={{ 
+                    background: '#F8FAFC', padding: '28px', borderRadius: '28px', border: '1px solid #E2E8F0', 
+                    cursor: 'default', position: 'relative', opacity: 0.8 
+                  }}
+                >
+                  <button 
+                    onClick={(e) => { e.stopPropagation(); setDeleteTarget(asm.id); }} 
+                    style={{ position: 'absolute', top: '15px', right: '15px', background: '#fff', border: 'none', borderRadius: '12px', padding: '8px', cursor: 'pointer', color: '#94A3B8' }}
+                  >
+                    <Ghost size={18} />
                   </button>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-                    <div style={{ width: '56px', height: '56px', background: '#DCFCE7', borderRadius: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                      <CheckCircle size={28} color="#10B981" />
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
+                    <div style={{ width: '65px', height: '65px', background: '#DCFCE7', borderRadius: '20px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <CheckCircle size={32} color="#10B981" />
                     </div>
                     <div>
-                      <h4 style={{ margin: '0 0 4px 0', fontSize: '16px', fontWeight: 900, color: '#1E293B' }}>{asm.title}</h4>
-                      <span style={{ fontSize: '12px', fontWeight: 700, padding: '3px 8px', borderRadius: '8px', background: '#DCFCE7', color: '#16A34A' }}>{t.done}</span>
+                      <h4 style={{ margin: '0 0 5px 0', fontSize: '18px', fontWeight: 900, color: '#1E293B' }}>{asm.title}</h4>
+                      <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                        <span style={{ fontSize: '13px', color: '#64748B' }}>{asm.questions?.length || 0} {t.questions}</span>
+                        <span style={{ fontSize: '12px', fontWeight: 800, padding: '4px 10px', borderRadius: '10px', background: '#DCFCE7', color: '#16A34A' }}>
+                          {t.done}
+                        </span>
+                      </div>
                     </div>
                   </div>
                 </div>
               ))}
             </div>
-          </div>
+          </>
         )}
 
-        {/* ONLY SHOW EMPTY STATE IF THERE ARE LITERALLY ZERO ASSIGNMENTS IN TOTAL */}
         {studentAssignments.length === 0 && (
           <div style={{ textAlign: 'center', padding: '100px 20px', background: '#fff', borderRadius: '32px', border: '2px dashed #E2E8F0' }}>
             <Ghost size={60} color="#CBD5E1" style={{ marginBottom: '20px' }} />
@@ -268,7 +293,7 @@ const StatCard = ({ icon, val, label }) => (
     {icon}
     <div>
       <div style={{ fontSize: '32px', fontWeight: 900 }}>{val}</div>
-      <div style={{ fontSize: '12px', color: '#64748B', fontWeight: 800, textTransform: 'uppercase' }}>{label}</div>
+      <div style={{ fontSize: '12px', color: '#64748B', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.5px' }}>{label}</div>
     </div>
   </div>
 );
