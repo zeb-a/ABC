@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { ChevronLeft, CheckCircle2, ArrowRight } from 'lucide-react';
-import api from '../services/oapi';
+import api from '../services/api';
 
 const StudentWorksheetSolver = ({ worksheet, onClose, studentName, studentId, classId, onCompletion, lang }) => {
   const [answers, setAnswers] = useState({});
