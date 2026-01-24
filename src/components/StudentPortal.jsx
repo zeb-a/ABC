@@ -41,7 +41,7 @@ const StudentPortal = ({ onBack, classes = [], refreshClasses }) => {
   const [lang, setLang] = useState('en');
   const t = translations[lang];
 
-  // --- LOGIC FROM YOUR WORKING REFERENCE FILE ---
+  // --- 1. LOGIC COPIED EXACTLY FROM YOUR REFERENCE ---
   const session = useMemo(() => {
     try {
       const saved = localStorage.getItem('classABC_student_portal');
@@ -90,9 +90,14 @@ const StudentPortal = ({ onBack, classes = [], refreshClasses }) => {
     };
   }, [classes, session, hiddenAssignments]);
 
-  // SEPARATING LISTS FOR THE TWO SECTIONS
-  const todoList = studentAssignments.filter(asm => !completedAssignments.includes(asm.id));
-  const doneList = studentAssignments.filter(asm => completedAssignments.includes(asm.id));
+  // --- 2. SEPARATING THE LISTS FOR THE UI ---
+  const todoList = useMemo(() => 
+    studentAssignments.filter(asm => !completedAssignments.includes(asm.id)),
+  [studentAssignments, completedAssignments]);
+
+  const doneList = useMemo(() => 
+    studentAssignments.filter(asm => completedAssignments.includes(asm.id)),
+  [studentAssignments, completedAssignments]);
 
   const handleHideAssignment = () => {
     if (!deleteTarget) return;
@@ -139,7 +144,7 @@ const StudentPortal = ({ onBack, classes = [], refreshClasses }) => {
         }
       `}</style>
       
-      {/* MODAL: HIDE TASK */}
+      {/* --- MODERN HIDE MODAL --- */}
       {deleteTarget && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(15, 23, 42, 0.6)', backdropFilter: 'blur(8px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2000 }}>
           <div style={{ background: '#fff', padding: '40px', borderRadius: '32px', maxWidth: '450px', width: '90%', textAlign: 'center', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)' }}>
@@ -156,7 +161,7 @@ const StudentPortal = ({ onBack, classes = [], refreshClasses }) => {
         </div>
       )}
 
-      {/* NAVBAR */}
+      {/* --- NAVBAR --- */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '20px 40px', background: 'rgba(255,255,255,0.9)', backdropFilter: 'blur(10px)', borderBottom: '1px solid #E2E8F0', position: 'sticky', top: 0, zIndex: 100 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           <div>
@@ -183,7 +188,7 @@ const StudentPortal = ({ onBack, classes = [], refreshClasses }) => {
           <StatCard icon={<BookOpen color="#6366F1" size={32} />} val={todoList.length} label={t.todo} />
         </div>
 
-        {/* SECTION 1: TO DO */}
+        {/* --- SECTION 1: TO DO --- */}
         <h3 style={{ fontSize: '28px', fontWeight: 900, marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '12px' }}>
           <BookOpen size={28} color="#6366F1" /> {t.todo}
         </h3>
@@ -208,16 +213,17 @@ const StudentPortal = ({ onBack, classes = [], refreshClasses }) => {
             ))}
           </div>
         ) : (
+          /* MODERN ALL CAUGHT UP CARD */
           <div style={{ textAlign: 'center', padding: '60px 20px', background: '#EEF2FF', borderRadius: '32px', border: '2px dashed #A78BFA', marginBottom: '60px' }}>
             <div style={{ background: '#fff', width: '80px', height: '80px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px' }}>
                <CheckCircle size={40} color="#6366F1" />
             </div>
             <h3 style={{ fontSize: '24px', fontWeight: 900, color: '#4F46E5', margin: '0 0 10px 0' }}>All caught up!</h3>
-            <p style={{ color: '#6366F1', opacity: 0.8, fontWeight: 600 }}>You've completed everything on your list.</p>
+            <p style={{ color: '#6366F1', opacity: 0.8, fontWeight: 600 }}>You've finished everything on your list.</p>
           </div>
         )}
 
-        {/* SECTION 2: COMPLETED */}
+        {/* --- SECTION 2: COMPLETED --- */}
         {doneList.length > 0 && (
           <div style={{ marginTop: '40px' }}>
             <h3 style={{ fontSize: '28px', fontWeight: 900, marginBottom: '25px', display: 'flex', alignItems: 'center', gap: '12px' }}>
@@ -225,7 +231,7 @@ const StudentPortal = ({ onBack, classes = [], refreshClasses }) => {
             </h3>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: '20px' }}>
               {doneList.map((asm) => (
-                <div key={asm.id} style={{ background: '#fff', padding: '24px', borderRadius: '24px', border: '1px solid #DCFCE7', position: 'relative', opacity: 0.9 }}>
+                <div key={asm.id} style={{ background: '#fff', padding: '24px', borderRadius: '24px', border: '1px solid #DCFCE7', position: 'relative', opacity: 0.95 }}>
                   <button onClick={(e) => { e.stopPropagation(); setDeleteTarget(asm.id); }} style={{ position: 'absolute', top: '15px', right: '15px', background: '#F8FAFC', border: 'none', borderRadius: '10px', padding: '6px', cursor: 'pointer', color: '#94A3B8' }}>
                     <Ghost size={16} />
                   </button>
@@ -241,6 +247,15 @@ const StudentPortal = ({ onBack, classes = [], refreshClasses }) => {
                 </div>
               ))}
             </div>
+          </div>
+        )}
+
+        {/* ONLY SHOW EMPTY STATE IF THERE ARE LITERALLY ZERO ASSIGNMENTS IN TOTAL */}
+        {studentAssignments.length === 0 && (
+          <div style={{ textAlign: 'center', padding: '100px 20px', background: '#fff', borderRadius: '32px', border: '2px dashed #E2E8F0' }}>
+            <Ghost size={60} color="#CBD5E1" style={{ marginBottom: '20px' }} />
+            <h3 style={{ fontSize: '24px', color: '#1E293B' }}>{t.noAsn}</h3>
+            <p style={{ color: '#64748B' }}>{t.refreshPrompt}</p>
           </div>
         )}
       </div>
