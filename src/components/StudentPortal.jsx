@@ -89,6 +89,24 @@ const StudentPortal = ({ onBack, classes = [], refreshClasses }) => {
     loadCompletedAssignments();
   }, [session, classes]);
 
+  // Clean up invalid completed assignment IDs (IDs that no longer exist in assignments)
+  useEffect(() => {
+    if (!session || !classes.length) return;
+
+    const sId = String(session.studentId);
+    const foundClass = classes.find(c => c.students?.some(stud => String(stud.id) === sId));
+    if (!foundClass) return;
+
+    const allAssignmentIds = (foundClass.assignments || []).map(asm => String(asm.id));
+    const validCompletedIds = completedAssignments.filter(id => allAssignmentIds.includes(String(id)));
+
+    // Only update if there are invalid IDs
+    if (validCompletedIds.length !== completedAssignments.length) {
+      setCompletedAssignments(validCompletedIds);
+      localStorage.setItem('classABC_completed_assignments', JSON.stringify(validCompletedIds));
+    }
+  }, [classes, session, completedAssignments]);
+
   const [hiddenAssignments, setHiddenAssignments] = useState(() => {
     try {
       const saved = localStorage.getItem('classABC_hidden_assignments');
@@ -128,10 +146,10 @@ const StudentPortal = ({ onBack, classes = [], refreshClasses }) => {
         return dateB - dateA;
       });
 
-    return { 
-      liveClass: foundClass, 
-      studentAssignments: assignments, 
-      currentStudent: foundClass.students?.find(s => String(s.id) === sId) 
+    return {
+      liveClass: foundClass,
+      studentAssignments: assignments,
+      currentStudent: foundClass.students?.find(s => String(s.id) === sId)
     };
   }, [classes, session, hiddenAssignments, completedAssignments]);
 
