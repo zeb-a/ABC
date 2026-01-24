@@ -224,41 +224,37 @@ const StudentPortal = ({ onBack, classes = [], refreshClasses }) => {
           <StatCard icon={<BookOpen color="#6366F1" size={32} />} val={todoCount} label={t.todo} />
         </div>
 
+        {/* TO DO ASSIGNMENTS */}
         <h3 style={{ fontSize: '28px', fontWeight: 900, marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <BookOpen size={28} color="#6366F1" /> {t.title}
+          <BookOpen size={28} color="#6366F1" /> {t.todo}
         </h3>
 
         {/* ASSIGNMENTS GRID */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: '25px' }}>
-          {studentAssignments.map((asm) => {
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: '25px', marginBottom: '60px' }}>
+          {studentAssignments.filter(asm => !completedAssignments.includes(asm.id)).map((asm) => {
             const isCompleted = completedAssignments.includes(asm.id);
             return (
-              <div 
-                key={asm.id} 
-                onClick={() => !isCompleted && setActiveWorksheet(asm)} 
-                style={{ 
-                  background: '#fff', padding: '28px', borderRadius: '28px', border: '1px solid #E2E8F0', 
-                  cursor: isCompleted ? 'default' : 'pointer', position: 'relative', transition: 'transform 0.2s' 
+              <div
+                key={asm.id}
+                onClick={() => setActiveWorksheet(asm)}
+                style={{
+                  background: '#fff', padding: '28px', borderRadius: '28px', border: '1px solid #E2E8F0',
+                  cursor: 'pointer', position: 'relative', transition: 'transform 0.2s, box-shadow 0.2s',
+                  boxShadow: '0 2px 10px rgba(0,0,0,0.03)'
                 }}
+                onMouseEnter={(e) => e.currentTarget.style.transform = 'translateY(-4px)'}
+                onMouseLeave={(e) => e.currentTarget.style.transform = 'translateY(0)'}
               >
-                {isCompleted && (
-                  <button 
-                    onClick={(e) => { e.stopPropagation(); setDeleteTarget(asm.id); }} 
-                    style={{ position: 'absolute', top: '15px', right: '15px', background: '#F8FAFC', border: 'none', borderRadius: '12px', padding: '8px', cursor: 'pointer', color: '#94A3B8' }}
-                  >
-                    <Ghost size={18} />
-                  </button>
-                )}
                 <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
-                  <div style={{ width: '65px', height: '65px', background: isCompleted ? '#DCFCE7' : '#EEF2FF', borderRadius: '20px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    {isCompleted ? <CheckCircle size={32} color="#10B981" /> : <BookOpen size={32} color="#4F46E5" />}
+                  <div style={{ width: '65px', height: '65px', background: '#EEF2FF', borderRadius: '20px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <BookOpen size={32} color="#4F46E5" />
                   </div>
                   <div>
                     <h4 style={{ margin: '0 0 5px 0', fontSize: '18px', fontWeight: 900 }}>{asm.title}</h4>
                     <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
                       <span style={{ fontSize: '13px', color: '#64748B' }}>{asm.questions?.length || 0} {t.questions}</span>
-                      <span style={{ fontSize: '12px', fontWeight: 800, padding: '4px 10px', borderRadius: '10px', background: isCompleted ? '#DCFCE7' : '#EEF2FF', color: isCompleted ? '#16A34A' : '#4F46E5' }}>
-                        {isCompleted ? t.done : t.open}
+                      <span style={{ fontSize: '12px', fontWeight: 800, padding: '4px 10px', borderRadius: '10px', background: '#EEF2FF', color: '#4F46E5' }}>
+                        {t.open}
                       </span>
                     </div>
                   </div>
@@ -267,6 +263,47 @@ const StudentPortal = ({ onBack, classes = [], refreshClasses }) => {
             );
           })}
         </div>
+
+        {/* COMPLETED ASSIGNMENTS FOLDER */}
+        {completedAssignments.length > 0 && (
+          <div style={{ background: '#F8FAFC', borderRadius: '24px', padding: '40px', border: '2px dashed #CBD5E1' }}>
+            <h3 style={{ fontSize: '28px', fontWeight: 900, marginBottom: '25px', display: 'flex', alignItems: 'center', gap: '12px' }}>
+              <CheckCircle size={28} color="#10B981" /> {t.completed} <span style={{ fontSize: '16px', fontWeight: 600, color: '#94A3B8', marginLeft: '10px' }}>({completedAssignments.length})</span>
+            </h3>
+
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: '20px' }}>
+              {studentAssignments.filter(asm => completedAssignments.includes(asm.id)).map((asm) => (
+                <div
+                  key={asm.id}
+                  style={{
+                    background: '#fff', padding: '24px', borderRadius: '20px', border: '1px solid #DCFCE7',
+                    position: 'relative', opacity: '0.85'
+                  }}
+                >
+                  <button
+                    onClick={(e) => { e.stopPropagation(); setDeleteTarget(asm.id); }}
+                    style={{ position: 'absolute', top: '12px', right: '12px', background: '#FEF2F2', border: 'none', borderRadius: '10px', padding: '6px', cursor: 'pointer', color: '#E11D48', transition: 'all 0.2s' }}
+                    onMouseEnter={(e) => e.currentTarget.style.background = '#FEE2E2'}
+                    onMouseLeave={(e) => e.currentTarget.style.background = '#FEF2F2'}
+                  >
+                    <Ghost size={14} />
+                  </button>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                    <div style={{ width: '56px', height: '56px', background: '#DCFCE7', borderRadius: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <CheckCircle size={28} color="#10B981" />
+                    </div>
+                    <div style={{ flex: 1 }}>
+                      <h4 style={{ margin: '0 0 4px 0', fontSize: '16px', fontWeight: 900, color: '#1E293B' }}>{asm.title}</h4>
+                      <span style={{ fontSize: '12px', fontWeight: 700, padding: '3px 8px', borderRadius: '8px', background: '#DCFCE7', color: '#16A34A' }}>
+                        {t.done}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {studentAssignments.length === 0 && (
           <div style={{ textAlign: 'center', padding: '100px 20px', background: '#fff', borderRadius: '32px', border: '2px dashed #E2E8F0' }}>
