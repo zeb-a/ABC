@@ -209,7 +209,6 @@ const StudentPortal = ({ onBack, classes = [], refreshClasses }) => {
           <button onClick={() => setLang(lang === 'en' ? 'zh' : 'en')} style={{ background: '#F1F5F9', border: 'none', padding: '12px 20px', borderRadius: '16px', fontWeight: 800, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px' }}>
             <Globe size={18} /> {t.langToggle}
           </button>
-          {/* Refresh button removed on mobile/student portal per Phase 1 UX decision */}
           <button onClick={handleLogout} style={{minWidth: isMobile ? '48px' : 'auto', background: 'linear-gradient(135deg, #6366F1 0%, #8B5CF6 100%)', color: '#fff', border: 'none', borderRadius: '16px', fontWeight: 800, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: isMobile ? '0' : '8px', padding: isMobile ? '12px' : '12px 24px', }}>
             <LogOut size={isMobile ? 22 : 18} /> {!isMobile && t.logout}
           </button>
@@ -230,10 +229,9 @@ const StudentPortal = ({ onBack, classes = [], refreshClasses }) => {
         </h3>
 
         {/* ASSIGNMENTS GRID */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: '25px', marginBottom: '60px' }}>
-          {studentAssignments.filter(asm => !completedAssignments.includes(asm.id)).map((asm) => {
-            const isCompleted = completedAssignments.includes(asm.id);
-            return (
+        {studentAssignments.filter(asm => !completedAssignments.includes(String(asm.id))).length > 0 ? (
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: '25px', marginBottom: '60px' }}>
+            {studentAssignments.filter(asm => !completedAssignments.includes(String(asm.id))).map((asm) => (
               <div
                 key={asm.id}
                 onClick={() => setActiveWorksheet(asm)}
@@ -259,10 +257,16 @@ const StudentPortal = ({ onBack, classes = [], refreshClasses }) => {
                     </div>
                   </div>
                 </div>
-              </div>
-            );
-          })}
-        </div>
+              </div> 
+            ))}
+          </div>
+        ) : (
+          <div style={{ textAlign: 'center', padding: '40px', background: '#EEF2FF', borderRadius: '16px', border: '2px dashed #A78BFA' }}>
+            <CheckCircle size={48} color="#A78BFA" style={{ marginBottom: '15px' }} />
+            <h3 style={{ fontSize: '18px', fontWeight: 900, color: '#4F46E5', margin: '0 0 10px 0' }}>All caught up!</h3>
+            <p style={{ color: '#64748B', fontSize: '14px' }}>You've completed all your assignments.</p>
+          </div>
+        )}
 
         {/* COMPLETED ASSIGNMENTS FOLDER */}
         {completedAssignments.length > 0 && (
@@ -272,7 +276,7 @@ const StudentPortal = ({ onBack, classes = [], refreshClasses }) => {
             </h3>
 
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: '20px' }}>
-              {studentAssignments.filter(asm => completedAssignments.includes(asm.id)).map((asm) => (
+              {studentAssignments.filter(asm => completedAssignments.includes(String(asm.id))).map((asm) => (
                 <div
                   key={asm.id}
                   style={{
