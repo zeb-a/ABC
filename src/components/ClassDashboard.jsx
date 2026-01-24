@@ -1220,7 +1220,7 @@ export default function ClassDashboard({
                           lineHeight: 1.6,
                           marginBottom: '35px'
                         }}>
-                          You will be logged out of your account.
+                          You will be logged out of your account and returned to the teacher portal.
                         </p>
 
                         {/* Action Buttons */}
@@ -1248,8 +1248,11 @@ export default function ClassDashboard({
                           </button>
                           <button
                             onClick={async () => {
-                              // Clear auth and return to login
-                              api.logout();
+                              // Clear auth token and return to login
+                              localStorage.removeItem('classABC_logged_in');
+                              localStorage.removeItem('classABC_pb_token');
+                              localStorage.removeItem('classABC_token');
+                              api.setToken(null);
                               setShowLogoutConfirm(false);
                               if (typeof onBack === 'function') {
                                 onBack();
