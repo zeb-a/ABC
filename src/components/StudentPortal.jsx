@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import InlineHelpButton from './InlineHelpButton';
 import StudentWorksheetSolver from './StudentWorksheetSolver';
+import api from '../services/api';
 
 const translations = {
   en: {
@@ -35,8 +36,9 @@ const StudentPortal = ({ onBack, classes = [], refreshClasses }) => {
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, []);
+
   const [activeWorksheet, setActiveWorksheet] = useState(null);
-  const [deleteTarget, setDeleteTarget] = useState(null); // For the modern modal
+  const [deleteTarget, setDeleteTarget] = useState(null);
   const [lang, setLang] = useState('en');
   const t = translations[lang];
 
@@ -45,26 +47,59 @@ const StudentPortal = ({ onBack, classes = [], refreshClasses }) => {
     try {
       const saved = localStorage.getItem('classABC_student_portal');
       return saved ? JSON.parse(saved) : null;
-    // eslint-disable-next-line no-unused-vars
     } catch (e) { return null; }
   }, []);
 
-  const [completedAssignments, setCompletedAssignments] = useState(() => {
-    try {
-      const saved = localStorage.getItem('classABC_completed_assignments');
-      return saved ? JSON.parse(saved) : [];
-    } catch (e) { return []; }
-  });
+  const [completedAssignments, setCompletedAssignments] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  // 2. DATA LOADING (The "Working Logic" Fix)
+  useEffect(() => {
+    const loadCompletedAssignments = async () => {
+      if (!session || !classes.length) {
+        setIsLoading(false);
+        return;
+      }
+
+      try {
+        const sId = String(session.studentId);
+        // Fetch from backend
+        const response = await api.pbRequest(`/collections/submissions/records?filter=student_id='${sId}'`);
+        
+        // CRITICAL FIX: Robustly map IDs to strings and filter out undefined/nulls
+        // This prevents the bug where "undefined" matches "undefined" and marks everything done.
+        const submittedAssignmentIds = response.items
+          ?.map(item => item.assignment_id ? String(item.assignment_id) : null)
+          .filter(id => id !== null) || [];
+
+        // Sync with localStorage
+        const localCompleted = localStorage.getItem('classABC_completed_assignments');
+        const localIds = localCompleted ? JSON.parse(localCompleted) : [];
+
+        // Merge Unique IDs
+        const mergedIds = [...new Set([...submittedAssignmentIds, ...localIds.map(String)])];
+        setCompletedAssignments(mergedIds);
+        localStorage.setItem('classABC_completed_assignments', JSON.stringify(mergedIds));
+      } catch (error) {
+        console.error('Failed to load completed assignments:', error);
+        const localCompleted = localStorage.getItem('classABC_completed_assignments');
+        setCompletedAssignments(localCompleted ? JSON.parse(localCompleted) : []);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadCompletedAssignments();
+  }, [session, classes]);
 
   const [hiddenAssignments, setHiddenAssignments] = useState(() => {
     try {
       const saved = localStorage.getItem('classABC_hidden_assignments');
       return saved ? JSON.parse(saved) : [];
-    // eslint-disable-next-line no-unused-vars
     } catch (e) { return []; }
   });
 
-  // 2. DATA SCANNER (With Sorting & Hiding Logic)
+  // 3. SCANNER & SORTING
   const { liveClass, studentAssignments, currentStudent } = useMemo(() => {
     if (!session || !classes.length) return { liveClass: null, studentAssignments: [], currentStudent: null };
 
@@ -74,13 +109,12 @@ const StudentPortal = ({ onBack, classes = [], refreshClasses }) => {
 
     const assignments = (foundClass.assignments || [])
       .filter(asm => {
-        if (!asm || hiddenAssignments.includes(asm.id)) return false; // REMOVE HIDDEN ITEMS
+        if (!asm || hiddenAssignments.includes(asm.id)) return false;
         const isGlobal = asm.assignedToAll === true || asm.assignedTo === 'all' || !asm.assignedTo;
         const isSpecific = Array.isArray(asm.assignedTo) && asm.assignedTo.some(id => String(id) === sId);
         return isGlobal || isSpecific;
       })
       .sort((a, b) => {
-        // SORTING: Newest on top
         const dateA = new Date(b.created || b.id).getTime();
         const dateB = new Date(a.created || a.id).getTime();
         return dateA - dateB;
@@ -93,14 +127,9 @@ const StudentPortal = ({ onBack, classes = [], refreshClasses }) => {
     };
   }, [classes, session, hiddenAssignments]);
 
-  // --- SEPARATION LOGIC ---
-  const todoList = useMemo(() => 
-    studentAssignments.filter(asm => !completedAssignments.includes(asm.id)),
-  [studentAssignments, completedAssignments]);
-
-  const completedList = useMemo(() => 
-    studentAssignments.filter(asm => completedAssignments.includes(asm.id)),
-  [studentAssignments, completedAssignments]);
+  // 4. SEPARATE LISTS (Derived from the verified completedAssignments)
+  const todoList = studentAssignments.filter(asm => !completedAssignments.includes(String(asm.id)));
+  const completedList = studentAssignments.filter(asm => completedAssignments.includes(String(asm.id)));
 
   const handleHideAssignment = () => {
     if (!deleteTarget) return;
@@ -125,7 +154,7 @@ const StudentPortal = ({ onBack, classes = [], refreshClasses }) => {
         studentId={currentStudent?.id || session.studentId}
         classId={liveClass?.id}
         onCompletion={(id) => {
-          const newList = [...completedAssignments, id];
+          const newList = [...completedAssignments, String(id)];
           setCompletedAssignments(newList);
           localStorage.setItem('classABC_completed_assignments', JSON.stringify(newList));
         }}
@@ -135,6 +164,7 @@ const StudentPortal = ({ onBack, classes = [], refreshClasses }) => {
 
   return (
     <div className="student-portal" style={{ background: '#F8FAFC', minHeight: '100vh', fontFamily: "'Inter', sans-serif" }}>
+      {/* FULL CSS BLOCK RESTORED */}
       <style>{`
         .student-portal .topBar { padding: 12px 16px !important; }
         .student-portal h2 { font-size: 18px !important; }
@@ -147,7 +177,7 @@ const StudentPortal = ({ onBack, classes = [], refreshClasses }) => {
         }
       `}</style>
       
-      {/* --- MODERN HIDE MODAL --- */}
+      {/* MODERN HIDE MODAL */}
       {deleteTarget && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(15, 23, 42, 0.6)', backdropFilter: 'blur(8px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2000 }}>
           <div style={{ background: '#fff', padding: '40px', borderRadius: '32px', maxWidth: '450px', width: '90%', textAlign: 'center', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)' }}>
@@ -168,7 +198,7 @@ const StudentPortal = ({ onBack, classes = [], refreshClasses }) => {
         </div>
       )}
 
-      {/* --- NAVBAR --- */}
+      {/* NAVBAR */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '20px 40px', background: 'rgba(255,255,255,0.9)', backdropFilter: 'blur(10px)', borderBottom: '1px solid #E2E8F0', position: 'sticky', top: 0, zIndex: 100 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           <div>
@@ -195,89 +225,98 @@ const StudentPortal = ({ onBack, classes = [], refreshClasses }) => {
           <StatCard icon={<BookOpen color="#6366F1" size={32} />} val={todoList.length} label={t.todo} />
         </div>
 
-        {/* --- SECTION 1: TO DO --- */}
+        {/* --- SECTION 1: TO DO (Styled from Screenshot) --- */}
         <h3 style={{ fontSize: '28px', fontWeight: 900, marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '12px' }}>
           <BookOpen size={28} color="#6366F1" /> {t.todo}
         </h3>
 
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: '25px', marginBottom: '50px' }}>
-          {todoList.map((asm) => (
-            <div 
-              key={asm.id} 
-              onClick={() => setActiveWorksheet(asm)} 
-              style={{ 
-                background: '#fff', padding: '28px', borderRadius: '28px', border: '1px solid #E2E8F0', 
-                cursor: 'pointer', position: 'relative', transition: 'transform 0.2s' 
-              }}
-              onMouseEnter={(e) => e.currentTarget.style.transform = 'translateY(-4px)'}
-              onMouseLeave={(e) => e.currentTarget.style.transform = 'translateY(0)'}
-            >
-              <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
-                <div style={{ width: '65px', height: '65px', background: '#EEF2FF', borderRadius: '20px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  <BookOpen size={32} color="#4F46E5" />
-                </div>
-                <div>
-                  <h4 style={{ margin: '0 0 5px 0', fontSize: '18px', fontWeight: 900 }}>{asm.title}</h4>
-                  <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
-                    <span style={{ fontSize: '13px', color: '#64748B' }}>{asm.questions?.length || 0} {t.questions}</span>
-                    <span style={{ fontSize: '12px', fontWeight: 800, padding: '4px 10px', borderRadius: '10px', background: '#EEF2FF', color: '#4F46E5' }}>
-                      {t.open}
-                    </span>
+        {/* If there are items in the Todo List */}
+        {todoList.length > 0 ? (
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: '25px', marginBottom: '60px' }}>
+            {todoList.map((asm) => (
+              <div
+                key={asm.id}
+                onClick={() => setActiveWorksheet(asm)}
+                style={{
+                  background: '#fff', padding: '28px', borderRadius: '28px', border: '1px solid #E2E8F0',
+                  cursor: 'pointer', position: 'relative', transition: 'transform 0.2s, box-shadow 0.2s',
+                  boxShadow: '0 2px 10px rgba(0,0,0,0.03)'
+                }}
+                onMouseEnter={(e) => e.currentTarget.style.transform = 'translateY(-4px)'}
+                onMouseLeave={(e) => e.currentTarget.style.transform = 'translateY(0)'}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
+                  <div style={{ width: '65px', height: '65px', background: '#EEF2FF', borderRadius: '20px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <BookOpen size={32} color="#4F46E5" />
+                  </div>
+                  <div>
+                    <h4 style={{ margin: '0 0 5px 0', fontSize: '18px', fontWeight: 900 }}>{asm.title}</h4>
+                    <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                      <span style={{ fontSize: '13px', color: '#64748B' }}>{asm.questions?.length || 0} {t.questions}</span>
+                      <span style={{ fontSize: '12px', fontWeight: 800, padding: '4px 10px', borderRadius: '10px', background: '#EEF2FF', color: '#4F46E5' }}>
+                        {t.open}
+                      </span>
+                    </div>
                   </div>
                 </div>
-              </div>
+              </div> 
+            ))}
+          </div>
+        ) : (
+          /* EMPTY STATE CARD (Indigo Dashed - Matches Screenshot) */
+          <div style={{ textAlign: 'center', padding: '40px', background: '#EEF2FF', borderRadius: '16px', border: '2px dashed #A78BFA', marginBottom: '40px' }}>
+            <div style={{ background: '#fff', width: '80px', height: '80px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px', boxShadow: '0 10px 25px rgba(99, 102, 241, 0.1)' }}>
+              <CheckCircle size={40} color="#6366F1" />
             </div>
-          ))}
-          {todoList.length === 0 && (
-            <div style={{ gridColumn: '1/-1', textAlign: 'center', padding: '40px', background: '#fff', borderRadius: '28px', border: '1px dashed #CBD5E1', color: '#64748B' }}>
-              All caught up! No pending assignments.
-            </div>
-          )}
-        </div>
+            <h3 style={{ fontSize: '18px', fontWeight: 900, color: '#4F46E5', margin: '0 0 10px 0' }}>All caught up!</h3>
+            <p style={{ color: '#64748B', fontSize: '14px' }}>You've completed all your assignments.</p>
+          </div>
+        )}
 
-        {/* --- SECTION 2: COMPLETED --- */}
+        {/* --- SECTION 2: COMPLETED (Green Theme - Matches Screenshot) --- */}
         {completedList.length > 0 && (
-          <>
-            <h3 style={{ fontSize: '28px', fontWeight: 900, marginTop: '40px', marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '12px' }}>
-              <CheckCircle size={28} color="#10B981" /> {t.completed}
+          <div style={{ background: '#F8FAFC', borderRadius: '24px', padding: '40px', border: '2px dashed #CBD5E1' }}>
+            <h3 style={{ fontSize: '28px', fontWeight: 900, marginBottom: '25px', display: 'flex', alignItems: 'center', gap: '12px' }}>
+              <CheckCircle size={28} color="#10B981" /> {t.completed} <span style={{ fontSize: '16px', fontWeight: 600, color: '#94A3B8', marginLeft: '10px' }}>({completedList.length})</span>
             </h3>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: '25px' }}>
+
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: '20px' }}>
               {completedList.map((asm) => (
-                <div 
-                  key={asm.id} 
-                  style={{ 
-                    background: '#F8FAFC', padding: '28px', borderRadius: '28px', border: '1px solid #E2E8F0', 
-                    cursor: 'default', position: 'relative', opacity: 0.8 
+                <div
+                  key={asm.id}
+                  style={{
+                    background: '#fff', padding: '24px', borderRadius: '20px', border: '1px solid #DCFCE7',
+                    position: 'relative', opacity: '0.85'
                   }}
                 >
-                  <button 
-                    onClick={(e) => { e.stopPropagation(); setDeleteTarget(asm.id); }} 
-                    style={{ position: 'absolute', top: '15px', right: '15px', background: '#fff', border: 'none', borderRadius: '12px', padding: '8px', cursor: 'pointer', color: '#94A3B8' }}
+                  <button
+                    onClick={(e) => { e.stopPropagation(); setDeleteTarget(asm.id); }}
+                    style={{ position: 'absolute', top: '12px', right: '12px', background: '#FEF2F2', border: 'none', borderRadius: '10px', padding: '6px', cursor: 'pointer', color: '#E11D48', transition: 'all 0.2s' }}
+                    onMouseEnter={(e) => e.currentTarget.style.background = '#FEE2E2'}
+                    onMouseLeave={(e) => e.currentTarget.style.background = '#FEF2F2'}
                   >
-                    <Ghost size={18} />
+                    <Ghost size={14} />
                   </button>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
-                    <div style={{ width: '65px', height: '65px', background: '#DCFCE7', borderRadius: '20px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                      <CheckCircle size={32} color="#10B981" />
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                    <div style={{ width: '56px', height: '56px', background: '#DCFCE7', borderRadius: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <CheckCircle size={28} color="#10B981" />
                     </div>
-                    <div>
-                      <h4 style={{ margin: '0 0 5px 0', fontSize: '18px', fontWeight: 900, color: '#1E293B' }}>{asm.title}</h4>
-                      <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
-                        <span style={{ fontSize: '13px', color: '#64748B' }}>{asm.questions?.length || 0} {t.questions}</span>
-                        <span style={{ fontSize: '12px', fontWeight: 800, padding: '4px 10px', borderRadius: '10px', background: '#DCFCE7', color: '#16A34A' }}>
-                          {t.done}
-                        </span>
-                      </div>
+                    <div style={{ flex: 1 }}>
+                      <h4 style={{ margin: '0 0 4px 0', fontSize: '16px', fontWeight: 900, color: '#1E293B' }}>{asm.title}</h4>
+                      <span style={{ fontSize: '12px', fontWeight: 700, padding: '3px 8px', borderRadius: '8px', background: '#DCFCE7', color: '#16A34A' }}>
+                        {t.done}
+                      </span>
                     </div>
                   </div>
                 </div>
               ))}
             </div>
-          </>
+          </div>
         )}
 
+        {/* GLOBAL EMPTY STATE */}
         {studentAssignments.length === 0 && (
-          <div style={{ textAlign: 'center', padding: '100px 20px', background: '#fff', borderRadius: '32px', border: '2px dashed #E2E8F0' }}>
+          <div style={{ textAlign: 'center', padding: '100px 20px', background: '#fff', borderRadius: '32px', border: '2px dashed #E2E8F0', marginTop: '40px' }}>
             <Ghost size={60} color="#CBD5E1" style={{ marginBottom: '20px' }} />
             <h3 style={{ fontSize: '24px', color: '#1E293B' }}>{t.noAsn}</h3>
             <p style={{ color: '#64748B' }}>{t.refreshPrompt}</p>
