@@ -25,6 +25,10 @@ const StudentWorksheetSolver = ({ worksheet, onClose, studentName, studentId, cl
     } else if (questionType === 'match') {
       const currentMatches = answers[questionId] || {};
       setAnswers(prev => ({ ...prev, [questionId]: { ...currentMatches, [value.key]: value.value } }));
+    } else if (questionType === 'ordering') {
+      setAnswers(prev => ({ ...prev, [questionId]: value }));
+    } else if (questionType === 'sorting') {
+      setAnswers(prev => ({ ...prev, [questionId]: value }));
     } else {
       setAnswers(prev => ({ ...prev, [questionId]: value }));
     }
@@ -163,11 +167,132 @@ const StudentWorksheetSolver = ({ worksheet, onClose, studentName, studentId, cl
           />
         );
 
-      default: 
+      case 'truefalse':
+        return (
+          <div style={{ display: 'flex', gap: '12px' }}>
+            <button
+              onClick={() => handleAnswerChange(question.id, 'true', question.type)}
+              style={{
+                flex: 1,
+                padding: '16px',
+                borderRadius: '12px',
+                border: '2px solid',
+                borderColor: answers[question.id] === 'true' ? '#4CAF50' : '#E2E8F0',
+                background: answers[question.id] === 'true' ? '#E8F5E9' : '#fff',
+                color: answers[question.id] === 'true' ? '#4CAF50' : '#64748B',
+                fontWeight: 700,
+                fontSize: '16px',
+                cursor: 'pointer',
+                transition: 'all 0.2s'
+              }}
+            >
+              True
+            </button>
+            <button
+              onClick={() => handleAnswerChange(question.id, 'false', question.type)}
+              style={{
+                flex: 1,
+                padding: '16px',
+                borderRadius: '12px',
+                border: '2px solid',
+                borderColor: answers[question.id] === 'false' ? '#EF4444' : '#E2E8F0',
+                background: answers[question.id] === 'false' ? '#FEF2F2' : '#fff',
+                color: answers[question.id] === 'false' ? '#EF4444' : '#64748B',
+                fontWeight: 700,
+                fontSize: '16px',
+                cursor: 'pointer',
+                transition: 'all 0.2s'
+              }}
+            >
+              False
+            </button>
+          </div>
+        );
+
+      case 'numeric':
+        return (
+          <input
+            type="number"
+            style={{ width: '100%', padding: '15px', borderRadius: '12px', border: '2px solid #E2E8F0', fontSize: '16px' }}
+            placeholder="Enter a number..."
+            value={answers[question.id] || ''}
+            onChange={(e) => handleAnswerChange(question.id, e.target.value, question.type)}
+          />
+        );
+
+      case 'ordering':
+        return (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+            {question.sentenceParts?.map((part, index) => (
+              <div
+                key={index}
+                style={{
+                  padding: '14px 18px',
+                  borderRadius: '12px',
+                  border: '2px solid #E2E8F0',
+                  background: '#F8FAFC',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '12px'
+                }}
+              >
+                <span style={{
+                  width: '28px',
+                  height: '28px',
+                  borderRadius: '50%',
+                  background: '#4F46E5',
+                  color: '#fff',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontWeight: '800',
+                  fontSize: '12px',
+                  flexShrink: 0
+                }}>
+                  {answers[question.id]?.indexOf(part) + 1 || index + 1}
+                </span>
+                <span style={{ fontSize: '16px', fontWeight: 500 }}>{part}</span>
+              </div>
+            ))}
+          </div>
+        );
+
+      case 'sorting':
+        return (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+            {question.items?.map((item, index) => (
+              <div
+                key={index}
+                style={{
+                  padding: '14px 18px',
+                  borderRadius: '12px',
+                  border: '2px solid #E2E8F0',
+                  background: '#F8FAFC',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '12px',
+                  fontSize: '16px',
+                  fontWeight: 500
+                }}
+              >
+                <span style={{ color: '#64748B', fontSize: '14px' }}>{item}</span>
+              </div>
+            ))}
+            <textarea
+              style={{ width: '100%', padding: '15px', borderRadius: '12px', border: '2px solid #E2E8F0', fontSize: '16px', minHeight: '100px', resize: 'vertical', marginTop: '10px' }}
+              placeholder="Type how you sorted these items..."
+              value={answers[question.id] || ''}
+              onChange={(e) => handleAnswerChange(question.id, e.target.value, question.type)}
+            />
+          </div>
+        );
+
+      default:
         return (
           <input
             style={{ width: '100%', padding: '15px', borderRadius: '12px', border: '2px solid #E2E8F0', fontSize: '16px' }}
             placeholder="Type your answer here..."
+            value={answers[question.id] || ''}
             onChange={(e) => handleAnswerChange(question.id, e.target.value, question.type)}
           />
         );
