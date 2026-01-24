@@ -6,7 +6,6 @@ import {
 } from 'lucide-react';
 import InlineHelpButton from './InlineHelpButton';
 import StudentWorksheetSolver from './StudentWorksheetSolver';
-import api from '../services/api';
 
 const translations = {
   en: {
@@ -50,65 +49,12 @@ const StudentPortal = ({ onBack, classes = [], refreshClasses }) => {
     } catch (e) { return null; }
   }, []);
 
-  const [completedAssignments, setCompletedAssignments] = useState([]);
-  const [isLoading, setIsLoading] = useState(true);
-
-  // Load completed assignments from backend on mount and when session/classes change
-  useEffect(() => {
-    const loadCompletedAssignments = async () => {
-      if (!session || !classes.length) {
-        setIsLoading(false);
-        return;
-      }
-
-      try {
-        const sId = String(session.studentId);
-        // FIX: Only fetch records that are explicitly 'submitted'
-        // This prevents 'draft' or 'viewed' records from marking an item as done
-        const response = await api.pbRequest(`/collections/submissions/records?filter=student_id='${sId}' && status='submitted'`);
-        
-        // Double security: Filter in JS as well
-        const submittedAssignmentIds = response.items
-          ?.filter(item => item.status === 'submitted')
-          .map(item => item.assignment_id) || [];
-
-        // FIX: If backend fetch is successful, TRUST it. 
-        // Do not merge with localStorage here, as localStorage might contain the bugged "completed" items.
-        // Overwriting ensures we fix the "stuck in completed" bug for affected users.
-        setCompletedAssignments(submittedAssignmentIds);
-
-        // Update localStorage to match the clean backend data
-        localStorage.setItem('classABC_completed_assignments', JSON.stringify(submittedAssignmentIds));
-      } catch (error) {
-        console.error('Failed to load completed assignments:', error);
-        // Fallback to localStorage ONLY if backend fails
-        const localCompleted = localStorage.getItem('classABC_completed_assignments');
-        setCompletedAssignments(localCompleted ? JSON.parse(localCompleted) : []);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    loadCompletedAssignments();
-  }, [session, classes]);
-
-  // Clean up invalid completed assignment IDs (IDs that no longer exist in assignments)
-  useEffect(() => {
-    if (!session || !classes.length) return;
-
-    const sId = String(session.studentId);
-    const foundClass = classes.find(c => c.students?.some(stud => String(stud.id) === sId));
-    if (!foundClass) return;
-
-    const allAssignmentIds = (foundClass.assignments || []).map(asm => String(asm.id));
-    const validCompletedIds = completedAssignments.filter(id => allAssignmentIds.includes(String(id)));
-
-    // Only update if there are invalid IDs
-    if (validCompletedIds.length !== completedAssignments.length) {
-      setCompletedAssignments(validCompletedIds);
-      localStorage.setItem('classABC_completed_assignments', JSON.stringify(validCompletedIds));
-    }
-  }, [classes, session, completedAssignments]);
+  const [completedAssignments, setCompletedAssignments] = useState(() => {
+    try {
+      const saved = localStorage.getItem('classABC_completed_assignments');
+      return saved ? JSON.parse(saved) : [];
+    } catch (e) { return []; }
+  });
 
   const [hiddenAssignments, setHiddenAssignments] = useState(() => {
     try {
@@ -134,31 +80,22 @@ const StudentPortal = ({ onBack, classes = [], refreshClasses }) => {
         return isGlobal || isSpecific;
       })
       .sort((a, b) => {
-        // SORTING: Uncompleted first (newest to oldest), then completed (newest to oldest)
-        const isCompletedA = completedAssignments.includes(String(a.id));
-        const isCompletedB = completedAssignments.includes(String(b.id));
-
-        // Uncompleted assignments always come before completed ones
-        if (isCompletedA !== isCompletedB) {
-          return isCompletedA ? 1 : -1;
-        }
-
-        // Within same completion status, sort by date (newest first)
-        const dateA = new Date(a.created || a.id).getTime();
-        const dateB = new Date(b.created || b.id).getTime();
-        return dateB - dateA;
+        // SORTING: Newest on top
+        const dateA = new Date(b.created || b.id).getTime();
+        const dateB = new Date(a.created || a.id).getTime();
+        return dateA - dateB;
       });
 
-    return {
-      liveClass: foundClass,
-      studentAssignments: assignments,
-      currentStudent: foundClass.students?.find(s => String(s.id) === sId)
+    return { 
+      liveClass: foundClass, 
+      studentAssignments: assignments, 
+      currentStudent: foundClass.students?.find(s => String(s.id) === sId) 
     };
-  }, [classes, session, hiddenAssignments, completedAssignments]);
+  }, [classes, session, hiddenAssignments]);
 
   // 3. CORRECT TO-DO CALCULATION (Prevents negative numbers)
-  const todoCount = studentAssignments.filter(asm => !completedAssignments.includes(String(asm.id))).length;
-  const completedCount = studentAssignments.filter(asm => completedAssignments.includes(String(asm.id))).length;
+  const todoCount = studentAssignments.filter(asm => !completedAssignments.includes(asm.id)).length;
+  const completedCount = studentAssignments.filter(asm => completedAssignments.includes(asm.id)).length;
 
   const handleHideAssignment = () => {
     if (!deleteTarget) return;
@@ -183,7 +120,7 @@ const StudentPortal = ({ onBack, classes = [], refreshClasses }) => {
         studentId={currentStudent?.id || session.studentId}
         classId={liveClass?.id}
         onCompletion={(id) => {
-          const newList = [...completedAssignments, String(id)];
+          const newList = [...completedAssignments, id];
           setCompletedAssignments(newList);
           localStorage.setItem('classABC_completed_assignments', JSON.stringify(newList));
         }}
@@ -239,6 +176,7 @@ const StudentPortal = ({ onBack, classes = [], refreshClasses }) => {
           <button onClick={() => setLang(lang === 'en' ? 'zh' : 'en')} style={{ background: '#F1F5F9', border: 'none', padding: '12px 20px', borderRadius: '16px', fontWeight: 800, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px' }}>
             <Globe size={18} /> {t.langToggle}
           </button>
+          {/* Refresh button removed on mobile/student portal per Phase 1 UX decision */}
           <button onClick={handleLogout} style={{minWidth: isMobile ? '48px' : 'auto', background: 'linear-gradient(135deg, #6366F1 0%, #8B5CF6 100%)', color: '#fff', border: 'none', borderRadius: '16px', fontWeight: 800, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: isMobile ? '0' : '8px', padding: isMobile ? '12px' : '12px 24px', }}>
             <LogOut size={isMobile ? 22 : 18} /> {!isMobile && t.logout}
           </button>
@@ -253,94 +191,49 @@ const StudentPortal = ({ onBack, classes = [], refreshClasses }) => {
           <StatCard icon={<BookOpen color="#6366F1" size={32} />} val={todoCount} label={t.todo} />
         </div>
 
-        {/* TO DO ASSIGNMENTS */}
         <h3 style={{ fontSize: '28px', fontWeight: 900, marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <BookOpen size={28} color="#6366F1" /> {t.todo}
+          <BookOpen size={28} color="#6366F1" /> {t.title}
         </h3>
 
         {/* ASSIGNMENTS GRID */}
-        {studentAssignments.filter(asm => !completedAssignments.includes(String(asm.id))).length > 0 ? (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: '25px', marginBottom: '60px' }}>
-            {studentAssignments.filter(asm => !completedAssignments.includes(String(asm.id))).map((asm) => (
-              <div
-                key={asm.id}
-                onClick={() => setActiveWorksheet(asm)}
-                style={{
-                  background: '#fff', padding: '28px', borderRadius: '28px', border: '1px solid #E2E8F0',
-                  cursor: 'pointer', position: 'relative', transition: 'transform 0.2s, box-shadow 0.2s',
-                  boxShadow: '0 2px 10px rgba(0,0,0,0.03)'
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: '25px' }}>
+          {studentAssignments.map((asm) => {
+            const isCompleted = completedAssignments.includes(asm.id);
+            return (
+              <div 
+                key={asm.id} 
+                onClick={() => !isCompleted && setActiveWorksheet(asm)} 
+                style={{ 
+                  background: '#fff', padding: '28px', borderRadius: '28px', border: '1px solid #E2E8F0', 
+                  cursor: isCompleted ? 'default' : 'pointer', position: 'relative', transition: 'transform 0.2s' 
                 }}
-                onMouseEnter={(e) => e.currentTarget.style.transform = 'translateY(-4px)'}
-                onMouseLeave={(e) => e.currentTarget.style.transform = 'translateY(0)'}
               >
+                {isCompleted && (
+                  <button 
+                    onClick={(e) => { e.stopPropagation(); setDeleteTarget(asm.id); }} 
+                    style={{ position: 'absolute', top: '15px', right: '15px', background: '#F8FAFC', border: 'none', borderRadius: '12px', padding: '8px', cursor: 'pointer', color: '#94A3B8' }}
+                  >
+                    <Ghost size={18} />
+                  </button>
+                )}
                 <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
-                  <div style={{ width: '65px', height: '65px', background: '#EEF2FF', borderRadius: '20px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <BookOpen size={32} color="#4F46E5" />
+                  <div style={{ width: '65px', height: '65px', background: isCompleted ? '#DCFCE7' : '#EEF2FF', borderRadius: '20px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    {isCompleted ? <CheckCircle size={32} color="#10B981" /> : <BookOpen size={32} color="#4F46E5" />}
                   </div>
                   <div>
                     <h4 style={{ margin: '0 0 5px 0', fontSize: '18px', fontWeight: 900 }}>{asm.title}</h4>
                     <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
                       <span style={{ fontSize: '13px', color: '#64748B' }}>{asm.questions?.length || 0} {t.questions}</span>
-                      <span style={{ fontSize: '12px', fontWeight: 800, padding: '4px 10px', borderRadius: '10px', background: '#EEF2FF', color: '#4F46E5' }}>
-                        {t.open}
+                      <span style={{ fontSize: '12px', fontWeight: 800, padding: '4px 10px', borderRadius: '10px', background: isCompleted ? '#DCFCE7' : '#EEF2FF', color: isCompleted ? '#16A34A' : '#4F46E5' }}>
+                        {isCompleted ? t.done : t.open}
                       </span>
                     </div>
                   </div>
                 </div>
-              </div> 
-            ))}
-          </div>
-        ) : (
-          <div style={{ textAlign: 'center', padding: '40px', background: '#EEF2FF', borderRadius: '16px', border: '2px dashed #A78BFA' }}>
-            <CheckCircle size={48} color="#A78BFA" style={{ marginBottom: '15px' }} />
-            <h3 style={{ fontSize: '18px', fontWeight: 900, color: '#4F46E5', margin: '0 0 10px 0' }}>All caught up!</h3>
-            <p style={{ color: '#64748B', fontSize: '14px' }}>You've completed all your assignments.</p>
-          </div>
-        )}
-
-        {/* COMPLETED ASSIGNMENTS FOLDER */}
-        {(() => {
-          const completedAssignmentsList = studentAssignments.filter(asm => completedAssignments.includes(String(asm.id)));
-          return completedAssignmentsList.length > 0 && (
-            <div style={{ background: '#F8FAFC', borderRadius: '24px', padding: '40px', border: '2px dashed #CBD5E1' }}>
-              <h3 style={{ fontSize: '28px', fontWeight: 900, marginBottom: '25px', display: 'flex', alignItems: 'center', gap: '12px' }}>
-                <CheckCircle size={28} color="#10B981" /> {t.completed} <span style={{ fontSize: '16px', fontWeight: 600, color: '#94A3B8', marginLeft: '10px' }}>({completedAssignmentsList.length})</span>
-              </h3>
-
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: '20px' }}>
-                {completedAssignmentsList.map((asm) => (
-                <div
-                  key={asm.id}
-                  style={{
-                    background: '#fff', padding: '24px', borderRadius: '20px', border: '1px solid #DCFCE7',
-                    position: 'relative', opacity: '0.85'
-                  }}
-                >
-                  <button
-                    onClick={(e) => { e.stopPropagation(); setDeleteTarget(asm.id); }}
-                    style={{ position: 'absolute', top: '12px', right: '12px', background: '#FEF2F2', border: 'none', borderRadius: '10px', padding: '6px', cursor: 'pointer', color: '#E11D48', transition: 'all 0.2s' }}
-                    onMouseEnter={(e) => e.currentTarget.style.background = '#FEE2E2'}
-                    onMouseLeave={(e) => e.currentTarget.style.background = '#FEF2F2'}
-                  >
-                    <Ghost size={14} />
-                  </button>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-                    <div style={{ width: '56px', height: '56px', background: '#DCFCE7', borderRadius: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                      <CheckCircle size={28} color="#10B981" />
-                    </div>
-                    <div style={{ flex: 1 }}>
-                      <h4 style={{ margin: '0 0 4px 0', fontSize: '16px', fontWeight: 900, color: '#1E293B' }}>{asm.title}</h4>
-                      <span style={{ fontSize: '12px', fontWeight: 700, padding: '3px 8px', borderRadius: '8px', background: '#DCFCE7', color: '#16A34A' }}>
-                        {t.done}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-          );
-        })()}
+              </div>
+            );
+          })}
+        </div>
 
         {studentAssignments.length === 0 && (
           <div style={{ textAlign: 'center', padding: '100px 20px', background: '#fff', borderRadius: '32px', border: '2px dashed #E2E8F0' }}>
