@@ -63,22 +63,25 @@ const StudentPortal = ({ onBack, classes = [], refreshClasses }) => {
 
       try {
         const sId = String(session.studentId);
-        const response = await api.pbRequest(`/collections/submissions/records?filter=student_id='${sId}'`);
-        const submittedAssignmentIds = response.items?.map(item => item.assignment_id) || [];
+        // FIX: Only fetch records that are explicitly 'submitted'
+        // This prevents 'draft' or 'viewed' records from marking an item as done
+        const response = await api.pbRequest(`/collections/submissions/records?filter=student_id='${sId}' && status='submitted'`);
+        
+        // Double security: Filter in JS as well
+        const submittedAssignmentIds = response.items
+          ?.filter(item => item.status === 'submitted')
+          .map(item => item.assignment_id) || [];
 
-        // Also sync with localStorage as backup
-        const localCompleted = localStorage.getItem('classABC_completed_assignments');
-        const localIds = localCompleted ? JSON.parse(localCompleted) : [];
+        // FIX: If backend fetch is successful, TRUST it. 
+        // Do not merge with localStorage here, as localStorage might contain the bugged "completed" items.
+        // Overwriting ensures we fix the "stuck in completed" bug for affected users.
+        setCompletedAssignments(submittedAssignmentIds);
 
-        // Merge both sources, removing duplicates
-        const mergedIds = [...new Set([...submittedAssignmentIds, ...localIds.map(String)])];
-        setCompletedAssignments(mergedIds);
-
-        // Update localStorage with backend data
-        localStorage.setItem('classABC_completed_assignments', JSON.stringify(mergedIds));
+        // Update localStorage to match the clean backend data
+        localStorage.setItem('classABC_completed_assignments', JSON.stringify(submittedAssignmentIds));
       } catch (error) {
         console.error('Failed to load completed assignments:', error);
-        // Fallback to localStorage if backend fails
+        // Fallback to localStorage ONLY if backend fails
         const localCompleted = localStorage.getItem('classABC_completed_assignments');
         setCompletedAssignments(localCompleted ? JSON.parse(localCompleted) : []);
       } finally {
@@ -141,8 +144,8 @@ const StudentPortal = ({ onBack, classes = [], refreshClasses }) => {
         }
 
         // Within same completion status, sort by date (newest first)
-        const dateA = a.created || a.id;
-        const dateB = b.created || b.id;
+        const dateA = new Date(a.created || a.id).getTime();
+        const dateB = new Date(b.created || b.id).getTime();
         return dateB - dateA;
       });
 
