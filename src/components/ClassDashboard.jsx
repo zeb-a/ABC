@@ -1220,7 +1220,7 @@ export default function ClassDashboard({
                           lineHeight: 1.6,
                           marginBottom: '35px'
                         }}>
-                          You will be logged out of your account and returned to the teacher portal.
+                          You will be logged out of your account.
                         </p>
 
                         {/* Action Buttons */}
