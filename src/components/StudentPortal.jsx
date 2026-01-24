@@ -197,10 +197,27 @@ const StudentPortal = ({ onBack, classes = [], refreshClasses }) => {
         studentName={currentStudent?.name || session.studentName}
         studentId={currentStudent?.id || session.studentId}
         classId={liveClass?.id}
-        onCompletion={(id) => {
-          const newList = [...completedAssignments, String(id)];
-          setCompletedAssignments(newList);
-          localStorage.setItem('classABC_completed_assignments', JSON.stringify(newList));
+        onCompletion={async () => {
+          // Reload completed assignments from backend to ensure consistency
+          if (!session || !classes.length) return;
+
+          try {
+            const sId = String(session.studentId);
+            // Use the same filter pattern as StudentWorksheetSolver (without class_id filter)
+            // to ensure we find all submissions including those with potentially invalid class_id relations
+            const filterQuery = `student_id='${sId}'`;
+
+            console.log('[StudentPortal onCompletion] Loading completed assignments with filter:', filterQuery);
+            const response = await api.pbRequest(`/collections/submissions/records?filter=${encodeURIComponent(filterQuery)}`);
+            console.log('[StudentPortal onCompletion] Response:', response);
+            const submittedAssignmentIds = response.items?.map(item => String(item.assignment_id)) || [];
+            console.log('[StudentPortal onCompletion] Reloaded completed assignment IDs:', submittedAssignmentIds);
+            console.log('[StudentPortal onCompletion] Current studentAssignments IDs:', studentAssignments.map(a => String(a.id)));
+            setCompletedAssignments(submittedAssignmentIds);
+            localStorage.setItem('classABC_completed_assignments', JSON.stringify(submittedAssignmentIds));
+          } catch (error) {
+            console.error('Failed to reload completed assignments:', error);
+          }
         }}
       />
     );

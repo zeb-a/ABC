@@ -74,6 +74,9 @@ const StudentWorksheetSolver = ({ worksheet, onClose, studentName, studentId, cl
     }
 
     console.log('Using worksheet ID:', worksheetId);
+    console.log('Worksheet object keys:', Object.keys(worksheet));
+    console.log('Worksheet.id type:', typeof worksheet.id);
+    console.log('Worksheet.id value:', worksheet.id);
     console.log('Worksheet object:', worksheet);
 
     setIsSubmitting(true);
@@ -97,9 +100,9 @@ const StudentWorksheetSolver = ({ worksheet, onClose, studentName, studentId, cl
       if (existingSubmission.items && existingSubmission.items.length > 0) {
         alert("You have already submitted this worksheet.");
         setIsSubmitting(false);
-        // Still call onCompletion to mark the assignment as completed in the UI
+        // Reload completed assignments from backend to get the correct IDs
         if (onCompletion) {
-          onCompletion(worksheetId);
+          await onCompletion();
         }
         return;
       }
@@ -120,7 +123,9 @@ const StudentWorksheetSolver = ({ worksheet, onClose, studentName, studentId, cl
       grade: 0
     };
 
-    console.log('Submitting worksheet:', submissionData);
+    console.log('Submission data:', submissionData);
+    console.log('classId type:', typeof classId, 'value:', classId);
+    console.log('studentId type:', typeof studentId, 'value:', studentId);
 
     try {
       await api.pbRequest('/collections/submissions/records', {
@@ -131,7 +136,7 @@ const StudentWorksheetSolver = ({ worksheet, onClose, studentName, studentId, cl
       console.log('Submission successful');
 
       if (onCompletion) {
-        onCompletion(worksheetId);
+        await onCompletion();
       }
 
       // We stop loading and trigger the success UI state
