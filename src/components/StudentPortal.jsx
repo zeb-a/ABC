@@ -87,15 +87,20 @@ const StudentPortal = ({ onBack, classes = [], refreshClasses }) => {
         const response = await api.pbRequest(`/collections/submissions/records?filter=${encodeURIComponent(filterQuery)}`);
         console.log('[StudentPortal loadCompletedAssignments] Response:', response);
         console.log('[StudentPortal loadCompletedAssignments] Response items:', response.items);
+
+        const foundClass = classes.find(c => c.students?.some(stud => String(stud.id) === sId));
+        console.log('[StudentPortal loadCompletedAssignments] Found class:', foundClass?.name);
+        console.log('[StudentPortal loadCompletedAssignments] Assignments from class:', foundClass?.assignments);
+
         // Only use backend data - these are the truly submitted assignments
         const submittedAssignmentIds = response.items?.map(item => {
           console.log(`  - assignment_id from submission: "${item.assignment_id}" (type: ${typeof item.assignment_id})`);
           return String(item.assignment_id);
         }) || [];
 
-        const foundClass = classes.find(c => c.students?.some(stud => String(stud.id) === sId));
         const assignmentIds = (foundClass?.assignments || []).map(a => {
-          console.log(`  - asm.id from studentAssignments: "${a.id}" (type: ${typeof a.id})`);
+          console.log(`  - assignment from studentAssignments:`, a);
+          console.log(`    - a.id: "${a.id}" (type: ${typeof a.id})`);
           return String(a.id);
         });
 
