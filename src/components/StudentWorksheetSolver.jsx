@@ -42,12 +42,7 @@ const StudentWorksheetSolver = ({ worksheet, onClose, studentName, studentId, cl
   };
 
   const handleSubmit = async () => {
-    console.log('Submission data:', { classId, studentId, worksheetId: worksheet.id, classType: typeof classId });
-
-    if (!classId) {
-      alert("Error: Class ID is missing. Please refresh and try again.");
-      return;
-    }
+ 
 
     // Make sure we have a valid worksheet ID - try multiple possible ID fields
     let worksheetId = worksheet.id || worksheet.assignment_id || worksheet._id;

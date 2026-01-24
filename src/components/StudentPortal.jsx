@@ -1,8 +1,8 @@
 /* eslint-disable no-unused-vars */
-import React, { useState, useMemo, useEffect } from 'react';
+import  { useState, useMemo, useEffect } from 'react';
 import {
-  ArrowRight, Trophy, Star, BookOpen, Ghost, LogOut,
-  CheckCircle, Clock, AlertCircle, Globe
+ Trophy, Star, BookOpen, Ghost, LogOut,
+  CheckCircle, AlertCircle, Globe
 } from 'lucide-react';
 import InlineHelpButton from './InlineHelpButton';
 import StudentWorksheetSolver from './StudentWorksheetSolver';
@@ -22,12 +22,17 @@ const translations = {
     logout: "登出", refresh: "刷新", points: "总积分",
     completed: "已完成", todo: "待办", title: "我的作业项目",
     questions: "个问题", done: "完成", open: "开启",
-    hideTask: "隐藏任务？", hideWarn: "这将从您的仪表板中删除该作业。您无法再次看到它。",
+    hideTask: "隐藏任务？", hideWarn: "这将从您的仪表板中删除该作业。您将无法再次看到它。",
     cancel: "取消", yesHide: "是的，隐藏它", noAsn: "暂无作业！",
     refreshPrompt: "如果老师刚发送了作业，请点击“刷新”。",
     langToggle: "English"
   }
 };
+
+// Version key to clear stale localStorage data on deployments
+const CACHE_VERSION = '2.0';
+const CACHE_VERSION_KEY = 'classABC_cache_version';
+
 
 const StudentPortal = ({ onBack, classes = [], refreshClasses }) => {
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
@@ -37,22 +42,35 @@ const StudentPortal = ({ onBack, classes = [], refreshClasses }) => {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
+  // Clear stale localStorage data on version change
+  useEffect(() => {
+    const currentVersion = localStorage.getItem(CACHE_VERSION_KEY);
+    if (currentVersion !== CACHE_VERSION) {
+      console.log('[StudentPortal] Cache version mismatch, clearing localStorage...');
+      localStorage.removeItem('classABC_completed_assignments');
+      localStorage.removeItem('classABC_hidden_assignments');
+      localStorage.setItem(CACHE_VERSION_KEY, CACHE_VERSION);
+    }
+  }, []);
+
   const [activeWorksheet, setActiveWorksheet] = useState(null);
-  const [deleteTarget, setDeleteTarget] = useState(null);
+  const [deleteTarget, setDeleteTarget] = useState(null); // For the modern modal
   const [lang, setLang] = useState('en');
   const t = translations[lang];
 
+  // 1. SESSION & STORAGE
   const session = useMemo(() => {
     try {
       const saved = localStorage.getItem('classABC_student_portal');
       return saved ? JSON.parse(saved) : null;
+    // eslint-disable-next-line no-unused-vars
     } catch (e) { return null; }
   }, []);
 
   const [completedAssignments, setCompletedAssignments] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  // --- BUG FIX LOGIC: Strict ID Validation ---
+  // Load completed assignments from backend on mount and when session/classes change
   useEffect(() => {
     const loadCompletedAssignments = async () => {
       if (!session || !classes.length) {
@@ -62,27 +80,25 @@ const StudentPortal = ({ onBack, classes = [], refreshClasses }) => {
 
       try {
         const sId = String(session.studentId);
-        // Fetch real submissions from database
-        const response = await api.pbRequest(`/collections/submissions/records?filter=student_id='${sId}'`);
-        
-        // 1. Extract IDs and filter out any garbage (nulls, undefined, or empty strings)
-        const dbIds = response.items
-          ?.map(item => item.assignment_id ? String(item.assignment_id) : null)
-          .filter(id => id !== null && id !== 'undefined' && id !== '') || [];
+        // Get current class to filter submissions by this class only
+        const currentClassId = classes.find(c => c.students?.some(stud => String(stud.id) === sId))?.id;
 
-        // 2. Sync with localStorage but clean it too
-        const localSaved = localStorage.getItem('classABC_completed_assignments');
-        const localIds = localSaved ? JSON.parse(localSaved) : [];
-        const cleanLocalIds = localIds
-          .map(id => id ? String(id) : null)
-          .filter(id => id !== null && id !== 'undefined' && id !== '');
+        const filterQuery = currentClassId
+          ? `student_id='${sId}' && class_id='${currentClassId}'`
+          : `student_id='${sId}'`;
 
-        // 3. Merge unique, clean IDs
-        const mergedIds = [...new Set([...dbIds, ...cleanLocalIds])];
-        setCompletedAssignments(mergedIds);
-        localStorage.setItem('classABC_completed_assignments', JSON.stringify(mergedIds));
+        const response = await api.pbRequest(`/collections/submissions/records?filter=${encodeURIComponent(filterQuery)}`);
+        // Only use backend data - these are the truly submitted assignments
+        const submittedAssignmentIds = response.items?.map(item => String(item.assignment_id)) || [];
+        setCompletedAssignments(submittedAssignmentIds);
+
+        // Update localStorage as cache (not as a source of truth)
+        localStorage.setItem('classABC_completed_assignments', JSON.stringify(submittedAssignmentIds));
       } catch (error) {
-        console.error('Failed to sync assignments:', error);
+        console.error('Failed to load completed assignments:', error);
+        // Clear stale localStorage and use empty array on error
+        localStorage.removeItem('classABC_completed_assignments');
+        setCompletedAssignments([]);
       } finally {
         setIsLoading(false);
       }
@@ -91,14 +107,33 @@ const StudentPortal = ({ onBack, classes = [], refreshClasses }) => {
     loadCompletedAssignments();
   }, [session, classes]);
 
+  // Clean up invalid completed assignment IDs (IDs that no longer exist in assignments)
+  useEffect(() => {
+    if (!session || !classes.length) return;
+
+    const sId = String(session.studentId);
+    const foundClass = classes.find(c => c.students?.some(stud => String(stud.id) === sId));
+    if (!foundClass) return;
+
+    const allAssignmentIds = (foundClass.assignments || []).map(asm => String(asm.id));
+    const validCompletedIds = completedAssignments.filter(id => allAssignmentIds.includes(String(id)));
+
+    // Only update if there are invalid IDs
+    if (validCompletedIds.length !== completedAssignments.length) {
+      setCompletedAssignments(validCompletedIds);
+      localStorage.setItem('classABC_completed_assignments', JSON.stringify(validCompletedIds));
+    }
+  }, [classes, session, completedAssignments]);
+
   const [hiddenAssignments, setHiddenAssignments] = useState(() => {
     try {
       const saved = localStorage.getItem('classABC_hidden_assignments');
       return saved ? JSON.parse(saved) : [];
+    // eslint-disable-next-line no-unused-vars
     } catch (e) { return []; }
   });
 
-  // --- DATA PROCESSING ---
+  // 2. DATA SCANNER (With Sorting & Hiding Logic)
   const { liveClass, studentAssignments, currentStudent } = useMemo(() => {
     if (!session || !classes.length) return { liveClass: null, studentAssignments: [], currentStudent: null };
 
@@ -108,32 +143,37 @@ const StudentPortal = ({ onBack, classes = [], refreshClasses }) => {
 
     const assignments = (foundClass.assignments || [])
       .filter(asm => {
-        if (!asm || hiddenAssignments.includes(asm.id)) return false;
+        if (!asm || hiddenAssignments.includes(asm.id)) return false; // REMOVE HIDDEN ITEMS
         const isGlobal = asm.assignedToAll === true || asm.assignedTo === 'all' || !asm.assignedTo;
         const isSpecific = Array.isArray(asm.assignedTo) && asm.assignedTo.some(id => String(id) === sId);
         return isGlobal || isSpecific;
       })
       .sort((a, b) => {
-        const dateA = new Date(b.created || b.id).getTime();
-        const dateB = new Date(a.created || a.id).getTime();
-        return dateA - dateB;
+        // SORTING: Uncompleted first (newest to oldest), then completed (newest to oldest)
+        const isCompletedA = completedAssignments.includes(String(a.id));
+        const isCompletedB = completedAssignments.includes(String(b.id));
+
+        // Uncompleted assignments always come before completed ones
+        if (isCompletedA !== isCompletedB) {
+          return isCompletedA ? 1 : -1;
+        }
+
+        // Within same completion status, sort by date (newest first)
+        const dateA = a.created || a.id;
+        const dateB = b.created || b.id;
+        return dateB - dateA;
       });
 
-    return { 
-      liveClass: foundClass, 
-      studentAssignments: assignments, 
-      currentStudent: foundClass.students?.find(s => String(s.id) === sId) 
+    return {
+      liveClass: foundClass,
+      studentAssignments: assignments,
+      currentStudent: foundClass.students?.find(s => String(s.id) === sId)
     };
-  }, [classes, session, hiddenAssignments]);
+  }, [classes, session, hiddenAssignments, completedAssignments]);
 
-  // Helper to check completion WITHOUT matching undefined
-  const isAsmCompleted = (asmId) => {
-    if (!asmId) return false;
-    return completedAssignments.includes(String(asmId));
-  };
-
-  const todoList = studentAssignments.filter(asm => !isAsmCompleted(asm.id));
-  const completedList = studentAssignments.filter(asm => isAsmCompleted(asm.id));
+  // 3. CORRECT TO-DO CALCULATION (Prevents negative numbers)
+  const todoCount = studentAssignments.filter(asm => !completedAssignments.includes(String(asm.id))).length;
+  const completedCount = studentAssignments.filter(asm => completedAssignments.includes(String(asm.id))).length;
 
   const handleHideAssignment = () => {
     if (!deleteTarget) return;
@@ -158,8 +198,7 @@ const StudentPortal = ({ onBack, classes = [], refreshClasses }) => {
         studentId={currentStudent?.id || session.studentId}
         classId={liveClass?.id}
         onCompletion={(id) => {
-          if (!id) return;
-          const newList = [...new Set([...completedAssignments, String(id)])];
+          const newList = [...completedAssignments, String(id)];
           setCompletedAssignments(newList);
           localStorage.setItem('classABC_completed_assignments', JSON.stringify(newList));
         }}
@@ -181,7 +220,7 @@ const StudentPortal = ({ onBack, classes = [], refreshClasses }) => {
         }
       `}</style>
       
-      {/* --- MODERN DELETE MODAL --- */}
+      {/* --- MODERN HIDE MODAL --- */}
       {deleteTarget && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(15, 23, 42, 0.6)', backdropFilter: 'blur(8px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2000 }}>
           <div style={{ background: '#fff', padding: '40px', borderRadius: '32px', maxWidth: '450px', width: '90%', textAlign: 'center', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)' }}>
@@ -225,18 +264,21 @@ const StudentPortal = ({ onBack, classes = [], refreshClasses }) => {
         {/* STATS */}
         <div style={{ display: 'flex', gap: '20px', marginBottom: '40px', flexWrap: 'wrap' }}>
           <StatCard icon={<Star color="#F59E0B" fill="#F59E0B" size={32} />} val={currentStudent?.score || 0} label={t.points} />
-          <StatCard icon={<Trophy color="#10B981" fill="#10B981" size={32} />} val={completedList.length} label={t.completed} />
-          <StatCard icon={<BookOpen color="#6366F1" size={32} />} val={todoList.length} label={t.todo} />
+          <StatCard icon={<Trophy color="#10B981" fill="#10B981" size={32} />} val={completedCount} label={t.completed} />
+          <StatCard icon={<BookOpen color="#6366F1" size={32} />} val={todoCount} label={t.todo} />
         </div>
 
-        {/* --- SECTION: TO DO --- */}
+        {/* TO DO ASSIGNMENTS */}
         <h3 style={{ fontSize: '28px', fontWeight: 900, marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '12px' }}>
           <BookOpen size={28} color="#6366F1" /> {t.todo}
         </h3>
 
-        {todoList.length > 0 ? (
+        {/* ASSIGNMENTS GRID */}
+        {(() => {
+          const todoAssignments = studentAssignments.filter(asm => !completedAssignments.includes(String(asm.id)));
+          return todoAssignments.length > 0 ? (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: '25px', marginBottom: '60px' }}>
-            {todoList.map((asm) => (
+            {todoAssignments.map((asm) => (
               <div
                 key={asm.id}
                 onClick={() => setActiveWorksheet(asm)}
@@ -262,27 +304,28 @@ const StudentPortal = ({ onBack, classes = [], refreshClasses }) => {
                     </div>
                   </div>
                 </div>
-              </div> 
+              </div>
             ))}
           </div>
         ) : (
-          <div style={{ textAlign: 'center', padding: '40px', background: '#EEF2FF', borderRadius: '16px', border: '2px dashed #A78BFA', marginBottom: '40px' }}>
-             <div style={{ background: '#fff', width: '80px', height: '80px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px', boxShadow: '0 10px 25px rgba(99, 102, 241, 0.1)' }}>
-              <CheckCircle size={40} color="#6366F1" />
-            </div>
+          <div style={{ textAlign: 'center', padding: '40px', background: '#EEF2FF', borderRadius: '16px', border: '2px dashed #A78BFA' }}>
+            <CheckCircle size={48} color="#A78BFA" style={{ marginBottom: '15px' }} />
             <h3 style={{ fontSize: '18px', fontWeight: 900, color: '#4F46E5', margin: '0 0 10px 0' }}>All caught up!</h3>
             <p style={{ color: '#64748B', fontSize: '14px' }}>You've completed all your assignments.</p>
           </div>
-        )}
+        )})()}
 
-        {/* --- SECTION: COMPLETED --- */}
-        {completedList.length > 0 && (
-          <div style={{ background: '#F8FAFC', borderRadius: '24px', padding: '40px', border: '2px dashed #CBD5E1' }}>
-            <h3 style={{ fontSize: '28px', fontWeight: 900, marginBottom: '25px', display: 'flex', alignItems: 'center', gap: '12px' }}>
-              <CheckCircle size={28} color="#10B981" /> {t.completed} <span style={{ fontSize: '16px', fontWeight: 600, color: '#94A3B8', marginLeft: '10px' }}>({completedList.length})</span>
-            </h3>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: '20px' }}>
-              {completedList.map((asm) => (
+        {/* COMPLETED ASSIGNMENTS FOLDER */}
+        {(() => {
+          const completedAssignmentsList = studentAssignments.filter(asm => completedAssignments.includes(String(asm.id)));
+          return completedAssignmentsList.length > 0 && (
+            <div style={{ background: '#F8FAFC', borderRadius: '24px', padding: '40px', border: '2px dashed #CBD5E1' }}>
+              <h3 style={{ fontSize: '28px', fontWeight: 900, marginBottom: '25px', display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <CheckCircle size={28} color="#10B981" /> {t.completed} <span style={{ fontSize: '16px', fontWeight: 600, color: '#94A3B8', marginLeft: '10px' }}>({completedAssignmentsList.length})</span>
+              </h3>
+
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: '20px' }}>
+                {completedAssignmentsList.map((asm) => (
                 <div
                   key={asm.id}
                   style={{
@@ -292,7 +335,9 @@ const StudentPortal = ({ onBack, classes = [], refreshClasses }) => {
                 >
                   <button
                     onClick={(e) => { e.stopPropagation(); setDeleteTarget(asm.id); }}
-                    style={{ position: 'absolute', top: '12px', right: '12px', background: '#FEF2F2', border: 'none', borderRadius: '10px', padding: '6px', cursor: 'pointer', color: '#E11D48' }}
+                    style={{ position: 'absolute', top: '12px', right: '12px', background: '#FEF2F2', border: 'none', borderRadius: '10px', padding: '6px', cursor: 'pointer', color: '#E11D48', transition: 'all 0.2s' }}
+                    onMouseEnter={(e) => e.currentTarget.style.background = '#FEE2E2'}
+                    onMouseLeave={(e) => e.currentTarget.style.background = '#FEF2F2'}
                   >
                     <Ghost size={14} />
                   </button>
@@ -311,10 +356,11 @@ const StudentPortal = ({ onBack, classes = [], refreshClasses }) => {
               ))}
             </div>
           </div>
-        )}
+          );
+        })()}
 
         {studentAssignments.length === 0 && (
-          <div style={{ textAlign: 'center', padding: '100px 20px', background: '#fff', borderRadius: '32px', border: '2px dashed #E2E8F0', marginTop: '40px' }}>
+          <div style={{ textAlign: 'center', padding: '100px 20px', background: '#fff', borderRadius: '32px', border: '2px dashed #E2E8F0' }}>
             <Ghost size={60} color="#CBD5E1" style={{ marginBottom: '20px' }} />
             <h3 style={{ fontSize: '24px', color: '#1E293B' }}>{t.noAsn}</h3>
             <p style={{ color: '#64748B' }}>{t.refreshPrompt}</p>
