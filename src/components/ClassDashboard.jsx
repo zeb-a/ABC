@@ -4,7 +4,7 @@ import React, { useEffect, useState, useRef } from 'react';
 import {
   Dices, Trophy, Settings, Home, UserPlus, Camera, SmilePlus,
   ChevronLeft, ChevronRight, Sliders, ChevronDown, ArrowUpDown,
-  CheckSquare, BarChart2, QrCode, ClipboardList, Maximize, Minimize, MessageSquare, Clock, CheckCircle, Siren, Zap, LogOut, ShieldAlert
+  CheckSquare, BarChart2, QrCode, ClipboardList, Maximize, Minimize, MessageSquare, Clock, CheckCircle, Siren, Zap
 } from 'lucide-react';
 
 import ReportsPage from './ReportsPage';
@@ -251,7 +251,6 @@ export default function ClassDashboard({
   const [showCodesPage, setShowCodesPage] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [showWhiteboard, setShowWhiteboard] = useState(false);
-  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   // Toggle Function
   const toggleFullscreen = () => {
     if (!document.fullscreenElement) {
@@ -1162,122 +1161,9 @@ export default function ClassDashboard({
                               <IconButton title={isFullscreen ? 'Exit Fullscreen' : 'Enter Fullscreen'} onClick={toggleFullscreen}>
                                 {isFullscreen ? <Minimize size={22} /> : <Maximize size={22} />}
                               </IconButton>
-                              <IconButton title="Logout" onClick={() => setShowLogoutConfirm(true)}>
-                                <LogOut size={22} />
-                              </IconButton>
                             </div>
 
                   </header>
-
-                  {/* LOGOUT CONFIRMATION MODAL */}
-                  {showLogoutConfirm && (
-                    <div style={{
-                      position: 'fixed',
-                      inset: 0,
-                      background: 'rgba(15, 23, 42, 0.7)',
-                      backdropFilter: 'blur(8px)',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      zIndex: 10000
-                    }}>
-                      <div style={{
-                        background: '#fff',
-                        padding: '50px',
-                        borderRadius: '32px',
-                        maxWidth: '450px',
-                        width: '90%',
-                        textAlign: 'center',
-                        boxShadow: '0 30px 60px -12px rgba(0, 0, 0, 0.15)',
-                        animation: 'scaleIn 0.2s cubic-bezier(0.34, 1.56, 0.64, 1)'
-                      }}>
-                        {/* Warning Icon */}
-                        <div style={{
-                          background: '#FEF2F2',
-                          width: '80px',
-                          height: '80px',
-                          borderRadius: '50%',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          margin: '0 auto 30px'
-                        }}>
-                          <ShieldAlert size={40} color="#EF4444" />
-                        </div>
-
-                        {/* Warning Message */}
-                        <h2 style={{
-                          fontSize: '24px',
-                          fontWeight: 900,
-                          marginBottom: '12px',
-                          color: '#1E293B'
-                        }}>
-                          Are you sure you want to log out?
-                        </h2>
-                        <p style={{
-                          color: '#64748B',
-                          fontSize: '16px',
-                          lineHeight: 1.6,
-                          marginBottom: '35px'
-                        }}>
-                          You will be logged out of your account.
-                        </p>
-
-                        {/* Action Buttons */}
-                        <div style={{
-                          display: 'flex',
-                          gap: '15px',
-                          justifyContent: 'center'
-                        }}>
-                          <button
-                            onClick={() => setShowLogoutConfirm(false)}
-                            style={{
-                              flex: 1,
-                              padding: '16px 24px',
-                              borderRadius: '16px',
-                              border: '2px solid #E2E8F0',
-                              background: '#fff',
-                              color: '#475569',
-                              fontWeight: 700,
-                              fontSize: '16px',
-                              cursor: 'pointer',
-                              transition: 'all 0.2s'
-                            }}
-                            >
-                            No, Keep Me In
-                          </button>
-                          <button
-                            onClick={async () => {
-                              // Clear auth token and return to login
-                              localStorage.removeItem('classABC_logged_in');
-                              localStorage.removeItem('classABC_pb_token');
-                              localStorage.removeItem('classABC_token');
-                              api.setToken(null);
-                              setShowLogoutConfirm(false);
-                              if (typeof onBack === 'function') {
-                                onBack();
-                              }
-                            }}
-                            style={{
-                              flex: 1,
-                              padding: '16px 24px',
-                              borderRadius: '16px',
-                              border: 'none',
-                              background: 'linear-gradient(135deg, #EF4444 0%, #DC2626 100%)',
-                              color: '#fff',
-                              fontWeight: 700,
-                              fontSize: '16px',
-                              cursor: 'pointer',
-                              transition: 'all 0.2s',
-                              boxShadow: '0 8px 20px rgba(239, 68, 68, 0.25)'
-                            }}
-                          >
-                            Yes, Log Out
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  )}
 
                   <div className="student-cards-container" style={{
                     display: 'grid',
