@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { ChevronLeft, CheckCircle2, ArrowRight } from 'lucide-react';
 import api from '../services/api';
 
-const StudentWorksheetSolver = ({ worksheet, onClose, studentName, studentId, classId, onCompletion, lang }) => {
+const StudentWorksheetSolver = ({ worksheet, onClose, studentName, studentId, classId, onCompletion }) => {
   const [answers, setAnswers] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
@@ -13,13 +13,6 @@ const StudentWorksheetSolver = ({ worksheet, onClose, studentName, studentId, cl
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, []);
-
-  // Debug: Log the worksheet object on mount
-  useEffect(() => {
-    console.log('Worksheet data received:', worksheet);
-    console.log('Worksheet ID:', worksheet.id);
-    console.log('Worksheet keys:', Object.keys(worksheet));
-  }, [worksheet]);
   
   const handleAnswerChange = (questionId, value, questionType) => {
     if (questionType === 'blank') {
@@ -32,74 +25,22 @@ const StudentWorksheetSolver = ({ worksheet, onClose, studentName, studentId, cl
     } else if (questionType === 'match') {
       const currentMatches = answers[questionId] || {};
       setAnswers(prev => ({ ...prev, [questionId]: { ...currentMatches, [value.key]: value.value } }));
-    } else if (questionType === 'ordering') {
-      setAnswers(prev => ({ ...prev, [questionId]: value }));
-    } else if (questionType === 'sorting') {
-      setAnswers(prev => ({ ...prev, [questionId]: value }));
     } else {
       setAnswers(prev => ({ ...prev, [questionId]: value }));
     }
   };
 
   const handleSubmit = async () => {
-    console.log('Submission data:', { classId, studentId, worksheetId: worksheet.id, classType: typeof classId });
-
     if (!classId) {
       alert("Error: Class ID is missing. Please refresh and try again.");
       return;
     }
 
-    // Make sure we have a valid worksheet ID - try multiple possible ID fields
-    let worksheetId = worksheet.id || worksheet.assignment_id || worksheet._id;
-
-    // If still no ID, try to find it from the questions or generate one
-    if (!worksheetId) {
-      // Try using title + first question as a fallback ID
-      if (worksheet.title && worksheet.questions && worksheet.questions[0]) {
-        worksheetId = `${worksheet.title}_${worksheet.questions[0].id}`;
-      } else if (worksheet.title) {
-        worksheetId = worksheet.title;
-      } else {
-        // Last resort - generate from timestamp
-        worksheetId = Date.now().toString();
-      }
-    }
-
-    console.log('Using worksheet ID:', worksheetId);
-    console.log('Worksheet object:', worksheet);
-
     setIsSubmitting(true);
-
-    // Check if already submitted
-    try {
-      const filterQuery = `student_id='${String(studentId)}' && assignment_id='${String(worksheetId)}'`;
-      console.log('Filter query:', filterQuery);
-
-      const existingSubmission = await api.pbRequest(
-        `/collections/submissions/records?filter=${encodeURIComponent(filterQuery)}`
-      );
-
-      console.log('Existing submission check:', {
-        studentId: String(studentId),
-        worksheetId: String(worksheetId),
-        existingCount: existingSubmission.items?.length || 0,
-        existingItems: existingSubmission.items
-      });
-
-      if (existingSubmission.items && existingSubmission.items.length > 0) {
-        alert("You have already submitted this worksheet.");
-        setIsSubmitting(false);
-        return;
-      }
-    } catch (error) {
-      console.error('Error checking existing submission:', error);
-      // Don't block submission if check fails - let the POST handle duplicates
-    }
-
+    
     const submissionData = {
       class_id: String(classId),
-      assignment_id: String(worksheetId),
-      assignment_title: worksheet.title || 'N/A',
+      assignment_id: String(worksheet.id),
       student_id: String(studentId),
       student_name: studentName,
       answers: answers,
@@ -108,31 +49,22 @@ const StudentWorksheetSolver = ({ worksheet, onClose, studentName, studentId, cl
       grade: 0
     };
 
-    console.log('Submitting worksheet:', submissionData);
-
     try {
       await api.pbRequest('/collections/submissions/records', {
         method: 'POST',
         body: JSON.stringify(submissionData)
       });
 
-      console.log('Submission successful');
-
       if (onCompletion) {
-        onCompletion(worksheetId);
+        onCompletion(worksheet.id);
       }
-
+      
       // We stop loading and trigger the success UI state
       setIsSubmitting(false);
-      setShowSuccess(true);
+      setShowSuccess(true); 
     } catch (error) {
       console.error('Submission Error:', error);
-      // Check for duplicate submission error
-      if (error.message && error.message.includes('duplicate')) {
-        alert("You have already submitted this worksheet.");
-      } else {
-        alert(`Error: ${error.message}`);
-      }
+      alert(`Error: ${error.message}`);
       setIsSubmitting(false);
     }
   };
@@ -231,132 +163,11 @@ const StudentWorksheetSolver = ({ worksheet, onClose, studentName, studentId, cl
           />
         );
 
-      case 'truefalse':
-        return (
-          <div style={{ display: 'flex', gap: '12px' }}>
-            <button
-              onClick={() => handleAnswerChange(question.id, 'true', question.type)}
-              style={{
-                flex: 1,
-                padding: '16px',
-                borderRadius: '12px',
-                border: '2px solid',
-                borderColor: answers[question.id] === 'true' ? '#4CAF50' : '#E2E8F0',
-                background: answers[question.id] === 'true' ? '#E8F5E9' : '#fff',
-                color: answers[question.id] === 'true' ? '#4CAF50' : '#64748B',
-                fontWeight: 700,
-                fontSize: '16px',
-                cursor: 'pointer',
-                transition: 'all 0.2s'
-              }}
-            >
-              True
-            </button>
-            <button
-              onClick={() => handleAnswerChange(question.id, 'false', question.type)}
-              style={{
-                flex: 1,
-                padding: '16px',
-                borderRadius: '12px',
-                border: '2px solid',
-                borderColor: answers[question.id] === 'false' ? '#EF4444' : '#E2E8F0',
-                background: answers[question.id] === 'false' ? '#FEF2F2' : '#fff',
-                color: answers[question.id] === 'false' ? '#EF4444' : '#64748B',
-                fontWeight: 700,
-                fontSize: '16px',
-                cursor: 'pointer',
-                transition: 'all 0.2s'
-              }}
-            >
-              False
-            </button>
-          </div>
-        );
-
-      case 'numeric':
-        return (
-          <input
-            type="number"
-            style={{ width: '100%', padding: '15px', borderRadius: '12px', border: '2px solid #E2E8F0', fontSize: '16px' }}
-            placeholder="Enter a number..."
-            value={answers[question.id] || ''}
-            onChange={(e) => handleAnswerChange(question.id, e.target.value, question.type)}
-          />
-        );
-
-      case 'ordering':
-        return (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-            {question.sentenceParts?.map((part, index) => (
-              <div
-                key={index}
-                style={{
-                  padding: '14px 18px',
-                  borderRadius: '12px',
-                  border: '2px solid #E2E8F0',
-                  background: '#F8FAFC',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '12px'
-                }}
-              >
-                <span style={{
-                  width: '28px',
-                  height: '28px',
-                  borderRadius: '50%',
-                  background: '#4F46E5',
-                  color: '#fff',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  fontWeight: '800',
-                  fontSize: '12px',
-                  flexShrink: 0
-                }}>
-                  {answers[question.id]?.indexOf(part) + 1 || index + 1}
-                </span>
-                <span style={{ fontSize: '16px', fontWeight: 500 }}>{part}</span>
-              </div>
-            ))}
-          </div>
-        );
-
-      case 'sorting':
-        return (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-            {question.items?.map((item, index) => (
-              <div
-                key={index}
-                style={{
-                  padding: '14px 18px',
-                  borderRadius: '12px',
-                  border: '2px solid #E2E8F0',
-                  background: '#F8FAFC',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '12px',
-                  fontSize: '16px',
-                  fontWeight: 500
-                }}
-              >
-                <span style={{ color: '#64748B', fontSize: '14px' }}>{item}</span>
-              </div>
-            ))}
-            <textarea
-              style={{ width: '100%', padding: '15px', borderRadius: '12px', border: '2px solid #E2E8F0', fontSize: '16px', minHeight: '100px', resize: 'vertical', marginTop: '10px' }}
-              placeholder="Type how you sorted these items..."
-              value={answers[question.id] || ''}
-              onChange={(e) => handleAnswerChange(question.id, e.target.value, question.type)}
-            />
-          </div>
-        );
-
-      default:
+      default: 
         return (
           <input
             style={{ width: '100%', padding: '15px', borderRadius: '12px', border: '2px solid #E2E8F0', fontSize: '16px' }}
             placeholder="Type your answer here..."
-            value={answers[question.id] || ''}
             onChange={(e) => handleAnswerChange(question.id, e.target.value, question.type)}
           />
         );
