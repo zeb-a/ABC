@@ -278,14 +278,16 @@ const StudentPortal = ({ onBack, classes = [], refreshClasses }) => {
         )}
 
         {/* COMPLETED ASSIGNMENTS FOLDER */}
-        {completedAssignments.length > 0 && (
-          <div style={{ background: '#F8FAFC', borderRadius: '24px', padding: '40px', border: '2px dashed #CBD5E1' }}>
-            <h3 style={{ fontSize: '28px', fontWeight: 900, marginBottom: '25px', display: 'flex', alignItems: 'center', gap: '12px' }}>
-              <CheckCircle size={28} color="#10B981" /> {t.completed} <span style={{ fontSize: '16px', fontWeight: 600, color: '#94A3B8', marginLeft: '10px' }}>({completedAssignments.length})</span>
-            </h3>
+        {(() => {
+          const completedAssignmentsList = studentAssignments.filter(asm => completedAssignments.includes(String(asm.id)));
+          return completedAssignmentsList.length > 0 && (
+            <div style={{ background: '#F8FAFC', borderRadius: '24px', padding: '40px', border: '2px dashed #CBD5E1' }}>
+              <h3 style={{ fontSize: '28px', fontWeight: 900, marginBottom: '25px', display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <CheckCircle size={28} color="#10B981" /> {t.completed} <span style={{ fontSize: '16px', fontWeight: 600, color: '#94A3B8', marginLeft: '10px' }}>({completedAssignmentsList.length})</span>
+              </h3>
 
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: '20px' }}>
-              {studentAssignments.filter(asm => completedAssignments.includes(String(asm.id))).map((asm) => (
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: '20px' }}>
+                {completedAssignmentsList.map((asm) => (
                 <div
                   key={asm.id}
                   style={{
@@ -316,7 +318,8 @@ const StudentPortal = ({ onBack, classes = [], refreshClasses }) => {
               ))}
             </div>
           </div>
-        )}
+          );
+        })()}
 
         {studentAssignments.length === 0 && (
           <div style={{ textAlign: 'center', padding: '100px 20px', background: '#fff', borderRadius: '32px', border: '2px dashed #E2E8F0' }}>
