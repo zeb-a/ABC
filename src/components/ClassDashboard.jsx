@@ -26,8 +26,16 @@ import SettingsPage from './SettingsPage';
 import InlineHelpButton from './InlineHelpButton';
 
 // Helper component for Sidebar Icons
-const SidebarIcon = ({ icon: Icon, label, onClick, isActive, badge, style }) => {
+const SidebarIcon = ({ icon: Icon, label, onClick, isActive, badge, style, dataNavbarIcon }) => {
   const [hovered, setHovered] = React.useState(false);
+
+  const handleClick = (e) => {
+    onClick(e);
+    // Notify onboarding guide when navbar icon is clicked
+    if (dataNavbarIcon && typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('onboarding:actionComplete', { detail: { stepId: dataNavbarIcon } }));
+    }
+  };
 
   return (
     <div
@@ -36,7 +44,8 @@ const SidebarIcon = ({ icon: Icon, label, onClick, isActive, badge, style }) => 
       onMouseLeave={() => setHovered(false)}
     >
       <div
-        onClick={onClick}
+        onClick={handleClick}
+        data-navbar-icon={dataNavbarIcon}
         role="button"
         tabIndex={0}
         style={{
@@ -159,7 +168,8 @@ export default function ClassDashboard({
   onOpenEggRoad,
   onOpenSettings,
   updateClasses,
-  onOpenAssignments
+  onOpenAssignments,
+  user
 }) {
   // Handler to merge imported behaviors from another class into the active class.
   // Listens for the custom event dispatched by BehaviorModal when the user requests an import.
@@ -709,6 +719,7 @@ export default function ClassDashboard({
             label="Open Lucky Draw"
             onClick={() => { setViewMode('dashboard'); setIsLuckyDrawOpen(true); setSidebarVisible(false); }}
             style={styles.icon}
+            dataNavbarIcon="lucky-draw"
           />
 
           <SidebarIcon
@@ -716,6 +727,7 @@ export default function ClassDashboard({
             label="Progress Road"
             onClick={() => { onOpenEggRoad(); setSidebarVisible(false); }}
             style={styles.icon}
+            dataNavbarIcon="egg-road"
           />
 
           <SidebarIcon
@@ -732,6 +744,7 @@ export default function ClassDashboard({
             }}
             isActive={isAttendanceMode}
             style={styles.icon}
+            dataNavbarIcon="attendance"
           />
 
 
@@ -784,6 +797,7 @@ export default function ClassDashboard({
             onClick={() => { setViewMode('settings'); setSidebarVisible(false); }}
             isActive={viewMode === 'settings'}
             style={styles.icon}
+            dataNavbarIcon="settings"
           />
 
         </nav>
@@ -982,13 +996,31 @@ export default function ClassDashboard({
                 <AssignmentsPage
                   activeClass={activeClass}
                   onBack={() => setViewMode('dashboard')}
-                  onPublish={(data) => {
+                  onPublish={async (data) => {
                     // This logic replaces the "missing" onOpenAssignments
-                    updateClasses(prev => prev.map(c =>
-                      c.id === activeClass.id
-                        ? { ...c, assignments: [...(c.assignments || []), data] }
-                        : c
-                    ));
+                    const newAssignment = {
+                      ...data,
+                      id: Date.now() // Add unique ID to each assignment
+                    };
+                    let newClasses;
+                    updateClasses(prev => {
+                      newClasses = prev.map(c =>
+                        c.id === activeClass.id
+                          ? { ...c, assignments: [...(c.assignments || []), newAssignment] }
+                          : c
+                      );
+                      return newClasses;
+                    });
+
+                    // Persist to backend
+                    if (user?.email) {
+                      try {
+                        await api.saveClasses(user.email, newClasses, behaviors);
+                      } catch (error) {
+                        console.error("Error saving assignment to backend:", error);
+                      }
+                    }
+
                     // Go back after publishing
                     setViewMode('dashboard');
                   }}
@@ -1227,7 +1259,20 @@ export default function ClassDashboard({
                         >
                           <StudentCard
                             student={s}
-                            onClick={() => { if (isAttendanceMode) { const next = new Set(absentStudents); if (next.has(s.id)) next.delete(s.id); else next.add(s.id); setAbsentStudents(next); } else if (!isAbsentToday) { setSelectedStudent(s); } }}
+                            onClick={() => {
+                              if (isAttendanceMode) {
+                                const next = new Set(absentStudents);
+                                if (next.has(s.id)) next.delete(s.id);
+                                else next.add(s.id);
+                                setAbsentStudents(next);
+                              } else if (!isAbsentToday) {
+                                setSelectedStudent(s);
+                                // Notify onboarding guide that student was selected
+                                if (typeof window !== 'undefined') {
+                                  window.dispatchEvent(new CustomEvent('onboarding:actionComplete', { detail: { stepId: 'student-card' } }));
+                                }
+                              }
+                            }}
                             onEdit={handleEditStudent}
                             onDelete={() => setDeleteConfirmStudentId(s.id)}
                             animating={Boolean(animatingStudents && animatingStudents[s.id])}

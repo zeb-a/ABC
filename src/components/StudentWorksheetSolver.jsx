@@ -63,21 +63,20 @@ const StudentWorksheetSolver = ({ worksheet, onClose, studentName, studentId, cl
       worksheetId = worksheet._id;
     }
 
-    // If still no ID, we need to generate one but log a warning
+    // If still no ID, generate one using the same logic as StudentPortal
     if (!worksheetId) {
-      console.warn('WARNING: No worksheet ID found. Falling back to title-based ID.');
+      console.warn('WARNING: No worksheet ID found. Generating ID from title and date.');
       if (worksheet.title) {
-        worksheetId = worksheet.title;
+        // Use the same format as StudentPortal: title_date format
+        const baseTitle = worksheet.title.replace(/\s+/g, '_').toLowerCase();
+        const dateStr = worksheet.date ? new Date(worksheet.date).getTime() : Date.now();
+        worksheetId = `${baseTitle}_${dateStr}`;
       } else {
         worksheetId = Date.now().toString();
       }
     }
 
     console.log('Using worksheet ID:', worksheetId);
-    console.log('Worksheet object keys:', Object.keys(worksheet));
-    console.log('Worksheet.id type:', typeof worksheet.id);
-    console.log('Worksheet.id value:', worksheet.id);
-    console.log('Worksheet object:', worksheet);
 
     setIsSubmitting(true);
 

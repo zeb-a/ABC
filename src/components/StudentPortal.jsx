@@ -85,36 +85,51 @@ const StudentPortal = ({ onBack, classes = [], refreshClasses }) => {
         const filterQuery = `student_id='${sId}'`;
 
         const response = await api.pbRequest(`/collections/submissions/records?filter=${encodeURIComponent(filterQuery)}`);
-        console.log('[StudentPortal loadCompletedAssignments] Response:', response);
-        console.log('[StudentPortal loadCompletedAssignments] Response items:', response.items);
 
         const foundClass = classes.find(c => c.students?.some(stud => String(stud.id) === sId));
-        console.log('[StudentPortal loadCompletedAssignments] Found class:', foundClass?.name);
-        console.log('[StudentPortal loadCompletedAssignments] Assignments from class:', foundClass?.assignments);
+        if (!foundClass) {
+          setIsLoading(false);
+          return;
+        }
 
-        // Only use backend data - these are the truly submitted assignments
-        const submittedAssignmentIds = response.items?.map(item => {
-          console.log(`  - assignment_id from submission: "${item.assignment_id}" (type: ${typeof item.assignment_id})`);
-          return String(item.assignment_id);
-        }) || [];
+        // Helper to generate assignment ID from title and date (same logic as ensureAssignmentId)
+        const generateAssignmentId = (asm) => {
+          if (asm.id && asm.id !== undefined && asm.id !== null) {
+            return String(asm.id);
+          }
+          // Generate ID from title and date for consistent identification
+          const baseTitle = (asm.title || '').replace(/\s+/g, '_').toLowerCase();
+          const dateStr = asm.date ? new Date(asm.date).getTime() : Date.now();
+          return `${baseTitle}_${dateStr}`;
+        };
 
-        const assignmentIds = (foundClass?.assignments || []).map(a => {
-          console.log(`  - assignment from studentAssignments:`, a);
-          console.log(`    - a.id: "${a.id}" (type: ${typeof a.id})`);
-          return String(a.id);
+        // Generate all possible IDs for each assignment (to match submissions)
+        const assignmentIdMap = new Map();
+        (foundClass.assignments || []).forEach((asm, idx) => {
+          const primaryId = generateAssignmentId(asm);
+          assignmentIdMap.set(primaryId, primaryId);
+
+          // Also try matching by title (for old submissions)
+          if (asm.title) {
+            assignmentIdMap.set(asm.title, primaryId);
+            assignmentIdMap.set(`${asm.title}_1`, primaryId);
+          }
         });
 
-        console.log('[StudentPortal loadCompletedAssignments] Completed IDs from backend:', submittedAssignmentIds);
-        console.log('[StudentPortal loadCompletedAssignments] Student assignments IDs:', assignmentIds);
-        console.log('[StudentPortal loadCompletedAssignments] Match check:');
-        submittedAssignmentIds.forEach(subId => {
-          const isMatch = assignmentIds.includes(subId);
-          console.log(`  - "${subId}" matches? ${isMatch}`);
+        // Map submissions to actual assignment IDs
+        const completedIds = [];
+        response.items?.forEach(item => {
+          const subId = String(item.assignment_id);
+          if (assignmentIdMap.has(subId)) {
+            completedIds.push(assignmentIdMap.get(subId));
+          }
         });
-        setCompletedAssignments(submittedAssignmentIds);
+
+        console.log('[StudentPortal loadCompletedAssignments] Completed IDs:', completedIds);
+        setCompletedAssignments(completedIds);
 
         // Update localStorage as cache (not as a source of truth)
-        localStorage.setItem('classABC_completed_assignments', JSON.stringify(submittedAssignmentIds));
+        localStorage.setItem('classABC_completed_assignments', JSON.stringify(completedIds));
       } catch (error) {
         console.error('Failed to load completed assignments:', error);
         // Clear stale localStorage and use empty array on error
@@ -162,7 +177,19 @@ const StudentPortal = ({ onBack, classes = [], refreshClasses }) => {
     let foundClass = classes.find(c => c.students?.some(stud => String(stud.id) === sId));
     if (!foundClass) return { liveClass: null, studentAssignments: [], currentStudent: null };
 
+    // Helper function to ensure each assignment has an ID
+    const ensureAssignmentId = (asm, idx) => {
+      if (!asm.id || asm.id === undefined || asm.id === null) {
+        // Generate ID from title and date for consistent identification
+        const baseTitle = (asm.title || '').replace(/\s+/g, '_').toLowerCase();
+        const dateStr = asm.date ? new Date(asm.date).getTime() : Date.now();
+        return { ...asm, id: `${baseTitle}_${dateStr}` };
+      }
+      return asm;
+    };
+
     const assignments = (foundClass.assignments || [])
+      .map((asm, idx) => ensureAssignmentId(asm, idx))
       .filter(asm => {
         if (!asm || hiddenAssignments.includes(asm.id)) return false; // REMOVE HIDDEN ITEMS
         const isGlobal = asm.assignedToAll === true || asm.assignedTo === 'all' || !asm.assignedTo;
@@ -224,18 +251,45 @@ const StudentPortal = ({ onBack, classes = [], refreshClasses }) => {
 
           try {
             const sId = String(session.studentId);
-            // Use the same filter pattern as StudentWorksheetSolver (without class_id filter)
-            // to ensure we find all submissions including those with potentially invalid class_id relations
-            const filterQuery = `student_id='${sId}'`;
+            const foundClass = classes.find(c => c.students?.some(stud => String(stud.id) === sId));
+            if (!foundClass) return;
 
-            console.log('[StudentPortal onCompletion] Loading completed assignments with filter:', filterQuery);
+            const filterQuery = `student_id='${sId}'`;
             const response = await api.pbRequest(`/collections/submissions/records?filter=${encodeURIComponent(filterQuery)}`);
-            console.log('[StudentPortal onCompletion] Response:', response);
-            const submittedAssignmentIds = response.items?.map(item => String(item.assignment_id)) || [];
-            console.log('[StudentPortal onCompletion] Reloaded completed assignment IDs:', submittedAssignmentIds);
-            console.log('[StudentPortal onCompletion] Current studentAssignments IDs:', studentAssignments.map(a => String(a.id)));
-            setCompletedAssignments(submittedAssignmentIds);
-            localStorage.setItem('classABC_completed_assignments', JSON.stringify(submittedAssignmentIds));
+
+            // Helper to generate assignment ID from title and date (same logic as ensureAssignmentId)
+            const generateAssignmentId = (asm) => {
+              if (asm.id && asm.id !== undefined && asm.id !== null) {
+                return String(asm.id);
+              }
+              const baseTitle = (asm.title || '').replace(/\s+/g, '_').toLowerCase();
+              const dateStr = asm.date ? new Date(asm.date).getTime() : Date.now();
+              return `${baseTitle}_${dateStr}`;
+            };
+
+            // Generate all possible IDs for each assignment (to match submissions)
+            const assignmentIdMap = new Map();
+            (foundClass.assignments || []).forEach((asm) => {
+              const primaryId = generateAssignmentId(asm);
+              assignmentIdMap.set(primaryId, primaryId);
+
+              if (asm.title) {
+                assignmentIdMap.set(asm.title, primaryId);
+                assignmentIdMap.set(`${asm.title}_1`, primaryId);
+              }
+            });
+
+            // Map submissions to actual assignment IDs
+            const completedIds = [];
+            response.items?.forEach(item => {
+              const subId = String(item.assignment_id);
+              if (assignmentIdMap.has(subId)) {
+                completedIds.push(assignmentIdMap.get(subId));
+              }
+            });
+
+            setCompletedAssignments(completedIds);
+            localStorage.setItem('classABC_completed_assignments', JSON.stringify(completedIds));
           } catch (error) {
             console.error('Failed to reload completed assignments:', error);
           }
