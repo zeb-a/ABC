@@ -1247,8 +1247,10 @@ export default function ClassDashboard({
                             No, Keep Me In
                           </button>
                           <button
-                            onClick={() => {
+                            onClick={async () => {
                               // Clear auth and return to login
+                              api.logout();
+                              setShowLogoutConfirm(false);
                               if (typeof onBack === 'function') {
                                 onBack();
                               }
