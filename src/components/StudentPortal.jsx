@@ -6,7 +6,7 @@ import {
 } from 'lucide-react';
 import InlineHelpButton from './InlineHelpButton';
 import StudentWorksheetSolver from './StudentWorksheetSolver';
-import api from '../services/api';
+import api from '../services/oapi';
 
 const translations = {
   en: {

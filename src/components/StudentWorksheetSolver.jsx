@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { ChevronLeft, CheckCircle2, ArrowRight } from 'lucide-react';
-import api from '../services/api';
+import api from '../services/oapi';
 
 const StudentWorksheetSolver = ({ worksheet, onClose, studentName, studentId, classId, onCompletion, lang }) => {
   const [answers, setAnswers] = useState({});
@@ -13,6 +13,13 @@ const StudentWorksheetSolver = ({ worksheet, onClose, studentName, studentId, cl
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, []);
+
+  // Debug: Log the worksheet object on mount
+  useEffect(() => {
+    console.log('Worksheet data received:', worksheet);
+    console.log('Worksheet ID:', worksheet.id);
+    console.log('Worksheet keys:', Object.keys(worksheet));
+  }, [worksheet]);
   
   const handleAnswerChange = (questionId, value, questionType) => {
     if (questionType === 'blank') {
@@ -40,13 +47,42 @@ const StudentWorksheetSolver = ({ worksheet, onClose, studentName, studentId, cl
       return;
     }
 
+    // Make sure we have a valid worksheet ID - try multiple possible ID fields
+    let worksheetId = worksheet.id || worksheet.assignment_id || worksheet._id;
+
+    // If still no ID, try to find it from the questions or generate one
+    if (!worksheetId) {
+      // Try using title + first question as a fallback ID
+      if (worksheet.title && worksheet.questions && worksheet.questions[0]) {
+        worksheetId = `${worksheet.title}_${worksheet.questions[0].id}`;
+      } else if (worksheet.title) {
+        worksheetId = worksheet.title;
+      } else {
+        // Last resort - generate from timestamp
+        worksheetId = Date.now().toString();
+      }
+    }
+
+    console.log('Using worksheet ID:', worksheetId);
+    console.log('Worksheet object:', worksheet);
+
     setIsSubmitting(true);
 
     // Check if already submitted
     try {
+      const filterQuery = `student_id='${String(studentId)}' && assignment_id='${String(worksheetId)}'`;
+      console.log('Filter query:', filterQuery);
+
       const existingSubmission = await api.pbRequest(
-        `/collections/submissions/records?filter=student_id='${String(studentId)}' && assignment_id='${String(worksheet.id)}'`
+        `/collections/submissions/records?filter=${encodeURIComponent(filterQuery)}`
       );
+
+      console.log('Existing submission check:', {
+        studentId: String(studentId),
+        worksheetId: String(worksheetId),
+        existingCount: existingSubmission.items?.length || 0,
+        existingItems: existingSubmission.items
+      });
 
       if (existingSubmission.items && existingSubmission.items.length > 0) {
         alert("You have already submitted this worksheet.");
@@ -55,11 +91,13 @@ const StudentWorksheetSolver = ({ worksheet, onClose, studentName, studentId, cl
       }
     } catch (error) {
       console.error('Error checking existing submission:', error);
+      // Don't block submission if check fails - let the POST handle duplicates
     }
 
     const submissionData = {
       class_id: String(classId),
-      assignment_id: String(worksheet.id),
+      assignment_id: String(worksheetId),
+      assignment_title: worksheet.title || 'N/A',
       student_id: String(studentId),
       student_name: studentName,
       answers: answers,
@@ -68,14 +106,18 @@ const StudentWorksheetSolver = ({ worksheet, onClose, studentName, studentId, cl
       grade: 0
     };
 
+    console.log('Submitting worksheet:', submissionData);
+
     try {
       await api.pbRequest('/collections/submissions/records', {
         method: 'POST',
         body: JSON.stringify(submissionData)
       });
 
+      console.log('Submission successful');
+
       if (onCompletion) {
-        onCompletion(worksheet.id);
+        onCompletion(worksheetId);
       }
 
       // We stop loading and trigger the success UI state
