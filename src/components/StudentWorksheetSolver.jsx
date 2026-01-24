@@ -16,9 +16,7 @@ const StudentWorksheetSolver = ({ worksheet, onClose, studentName, studentId, cl
 
   // Debug: Log the worksheet object on mount
   useEffect(() => {
-    console.log('Worksheet data received:', worksheet);
-    console.log('Worksheet ID:', worksheet.id);
-    console.log('Worksheet keys:', Object.keys(worksheet));
+ 
   }, [worksheet]);
   
   const handleAnswerChange = (questionId, value, questionType) => {
@@ -42,7 +40,6 @@ const StudentWorksheetSolver = ({ worksheet, onClose, studentName, studentId, cl
   };
 
   const handleSubmit = async () => {
-    console.log('Submission data:', { classId, studentId, worksheetId: worksheet.id, classType: typeof classId });
 
     if (!classId) {
       alert("Error: Class ID is missing. Please refresh and try again.");
@@ -76,25 +73,16 @@ const StudentWorksheetSolver = ({ worksheet, onClose, studentName, studentId, cl
       }
     }
 
-    console.log('Using worksheet ID:', worksheetId);
-
     setIsSubmitting(true);
 
     // Check if already submitted
     try {
       const filterQuery = `student_id='${String(studentId)}' && assignment_id='${String(worksheetId)}'`;
-      console.log('Filter query:', filterQuery);
 
       const existingSubmission = await api.pbRequest(
         `/collections/submissions/records?filter=${encodeURIComponent(filterQuery)}`
       );
 
-      console.log('Existing submission check:', {
-        studentId: String(studentId),
-        worksheetId: String(worksheetId),
-        existingCount: existingSubmission.items?.length || 0,
-        existingItems: existingSubmission.items
-      });
 
       if (existingSubmission.items && existingSubmission.items.length > 0) {
         alert("You have already submitted this worksheet.");
@@ -121,18 +109,11 @@ const StudentWorksheetSolver = ({ worksheet, onClose, studentName, studentId, cl
       grade_data: {},
       grade: 0
     };
-
-    console.log('Submission data:', submissionData);
-    console.log('classId type:', typeof classId, 'value:', classId);
-    console.log('studentId type:', typeof studentId, 'value:', studentId);
-
     try {
       await api.pbRequest('/collections/submissions/records', {
         method: 'POST',
         body: JSON.stringify(submissionData)
       });
-
-      console.log('Submission successful');
 
       if (onCompletion) {
         await onCompletion();

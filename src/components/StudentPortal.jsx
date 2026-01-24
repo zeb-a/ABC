@@ -46,7 +46,6 @@ const StudentPortal = ({ onBack, classes = [], refreshClasses }) => {
   useEffect(() => {
     const currentVersion = localStorage.getItem(CACHE_VERSION_KEY);
     if (currentVersion !== CACHE_VERSION) {
-      console.log('[StudentPortal] Cache version mismatch, clearing localStorage...');
       localStorage.removeItem('classABC_completed_assignments');
       localStorage.removeItem('classABC_hidden_assignments');
       localStorage.setItem(CACHE_VERSION_KEY, CACHE_VERSION);
@@ -124,8 +123,6 @@ const StudentPortal = ({ onBack, classes = [], refreshClasses }) => {
             completedIds.push(assignmentIdMap.get(subId));
           }
         });
-
-        console.log('[StudentPortal loadCompletedAssignments] Completed IDs:', completedIds);
         setCompletedAssignments(completedIds);
 
         // Update localStorage as cache (not as a source of truth)
