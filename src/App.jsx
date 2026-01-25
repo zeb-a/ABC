@@ -196,6 +196,19 @@ function App() {
     saveTimeoutRef.current = setTimeout(async () => {
       try {
         await api.saveClasses(user.email, classes, behaviors);
+        // After saving, reload classes from PocketBase to get real IDs
+        const syncedClasses = await api.getClassesSynced(user.email);
+        // Update active class ID if it was using a temporary ID
+        if (activeClassId && !syncedClasses.find(c => c.id === activeClassId)) {
+          const activeClass = classes.find(c => c.id === activeClassId);
+          if (activeClass) {
+            const syncedClass = syncedClasses.find(c => c.name === activeClass.name);
+            if (syncedClass) {
+              setActiveClassId(syncedClass.id);
+            }
+          }
+        }
+        setClasses(syncedClasses);
       } catch (e) {
         console.error('Save classes failed:', e.message);
       }

@@ -4,6 +4,7 @@ import {
   Image as ImageIcon, Smile, Plus, Layers, ChevronLeft, ChevronRight
 } from 'lucide-react';
 import { motion } from 'framer-motion';
+import twemoji from 'twemoji';
 
 export default function Whiteboard({ onClose }) {
   const canvasRef = useRef(null);
@@ -57,6 +58,25 @@ export default function Whiteboard({ onClose }) {
     window.addEventListener('resize', onResize);
     return () => window.removeEventListener('resize', onResize);
   }, []);
+
+  // Parse emojis with Twemoji when emoji picker opens
+  useEffect(() => {
+    if (showEmojiPicker) {
+      // Small delay to ensure DOM is updated
+      setTimeout(() => {
+        const emojiPicker = document.querySelector('[style*="position: fixed"][style*="z-index: 500"]');
+        if (emojiPicker) {
+          twemoji.parse(emojiPicker, {
+            base: 'https://cdn.jsdelivr.net/npm/twemoji@15.0.3/',
+            folder: '72x72',
+            ext: '.png',
+            size: '72x72',
+            className: 'emoji'
+          });
+        }
+      }, 50);
+    }
+  }, [showEmojiPicker]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -229,10 +249,27 @@ export default function Whiteboard({ onClose }) {
     if (!selectedEmoji) return;
 
     const ctx = contextRef.current;
-    ctx.font = `${fontSize * 1.5}px "Segoe UI Emoji", "Apple Color Emoji", sans-serif`;
-    ctx.textBaseline = 'top';
-    ctx.globalAlpha = 1.0;
-    ctx.fillText(emoji, selectedEmoji.x, selectedEmoji.y);
+    const emojiSize = fontSize * 1.5;
+
+    // Convert emoji to Twemoji code point
+    const codePoints = Array.from(emoji).map(char => char.codePointAt(0).toString(16)).join('-');
+
+    // Try to load Twemoji PNG image and draw it to canvas
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = () => {
+      ctx.globalAlpha = 1.0;
+      ctx.drawImage(img, selectedEmoji.x, selectedEmoji.y, emojiSize, emojiSize);
+    };
+    // Fallback to text if Twemoji fails
+    img.onerror = () => {
+      ctx.font = `${emojiSize}px "Segoe UI Emoji", "Apple Color Emoji", "Noto Color Emoji", sans-serif`;
+      ctx.textBaseline = 'top';
+      ctx.globalAlpha = 1.0;
+      ctx.fillText(emoji, selectedEmoji.x, selectedEmoji.y);
+    };
+
+    img.src = `https://cdn.jsdelivr.net/npm/twemoji@15.0.3/72x72/${codePoints}.png`;
 
     setSelectedEmoji(null);
     setShowEmojiPicker(false);

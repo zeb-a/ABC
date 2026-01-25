@@ -351,6 +351,7 @@ if (avatar && avatar.startsWith('data:image')) {
       const byName = new Map(userClasses.map(c => [c.name, c]));
 
       const processedIds = new Set();
+      const idMappings = new Map(); // Maps temporary IDs to PocketBase IDs
 
       // Helper to check JSON size (PocketBase limit is 1MB = 1048576 bytes)
       function isTooLarge(obj) {
@@ -418,6 +419,10 @@ if (avatar && avatar.startsWith('data:image')) {
               body: payloadJson
             });
             processedIds.add(created.id);
+            // Store mapping from temporary ID to real PocketBase ID
+            if (cls.id && cls.id !== created.id) {
+              idMappings.set(cls.id, created.id);
+            }
           } catch (e) {
             console.error('[API] Create failed for class:', cls.name, 'Error:', e.message);
           }
@@ -425,7 +430,7 @@ if (avatar && avatar.startsWith('data:image')) {
       }
 
       // Delete records that are not in the incoming array
-      for (const [id, item] of byId) {
+      for (const [id] of byId) {
         if (!processedIds.has(id)) {
           try {
             await pbRequest(`/collections/classes/records/${id}`, { method: 'DELETE' });
@@ -438,6 +443,29 @@ if (avatar && avatar.startsWith('data:image')) {
       return arr;
     } catch (err) {
       console.error('[API] Save error:', err.message);
+      throw err;
+    }
+  },
+
+  // Get the latest classes from PocketBase with real IDs
+  async getClassesSynced(email) {
+    try {
+      const res = await pbRequest('/collections/classes/records?perPage=500');
+      const classes = (res.items || []).filter(c => c.teacher === email);
+
+      // Parse JSON fields if they're strings
+      return classes.map(c => ({
+        ...c,
+        students: typeof c.students === 'string' ? JSON.parse(c.students || '[]') : (c.students || []),
+        tasks: typeof c.tasks === 'string' ? JSON.parse(c.tasks || '[]') : (c.tasks || []),
+        assignments: typeof c.assignments === 'string' ? JSON.parse(c.assignments || '[]') : (c.assignments || []),
+        submissions: typeof c.submissions === 'string' ? JSON.parse(c.submissions || '[]') : (c.submissions || []),
+        studentAssignments: typeof c.studentAssignments === 'string' ? JSON.parse(c.studentAssignments || '[]') : (c.studentAssignments || []),
+        student_submissions: typeof c.student_submissions === 'string' ? JSON.parse(c.student_submissions || '[]') : (c.student_submissions || []),
+        Access_Codes: typeof c.Access_Codes === 'string' ? JSON.parse(c.Access_Codes || '{}') : (c.Access_Codes || {})
+      }));
+    } catch (err) {
+      console.error('[CLASSES] Load error:', err.message);
       throw err;
     }
   },

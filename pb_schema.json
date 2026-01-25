@@ -57,6 +57,12 @@
         "id": "icon_field",
         "name": "icon",
         "type": "text"
+      },
+      {
+        "system": false,
+        "id": "class_field",
+        "name": "class",
+        "type": "text"
       }
     ]
   },

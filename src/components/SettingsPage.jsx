@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Edit2, Plus, X, RefreshCw, Trash2, Save } from 'lucide-react';
 import api from '../services/api';
 import InlineHelpButton from './InlineHelpButton';
+import twemoji from 'twemoji';
 
 // Modern, fun stickers for kids - using high-quality SVG graphics from reliable CDN
 // These are styled as modern flat illustrations with bold colors
@@ -214,31 +215,33 @@ export default function SettingsPage({ activeClass, behaviors, onBack, onUpdateB
   // Parse emojis with Twemoji when emoji picker opens or cards render
   React.useEffect(() => {
     const parseEmojis = () => {
-      if (typeof window !== 'undefined' && window.twemoji) {
-        // Parse emojis in emoji picker
-        setTimeout(() => {
-          const emojiModal = document.querySelector('[style*="position: fixed"][style*="z-index: 3500"]');
-          if (emojiModal) {
-            window.twemoji.parse(emojiModal, {
-              folder: 'svg',
-              ext: '.svg',
-              className: 'emoji'
-            });
-          }
-        }, 50);
+      // Parse emojis in emoji picker
+      setTimeout(() => {
+        const emojiModal = document.querySelector('[style*="position: fixed"][style*="z-index: 3500"]');
+        if (emojiModal) {
+          twemoji.parse(emojiModal, {
+            base: 'https://cdn.jsdelivr.net/npm/twemoji@15.0.3/',
+            folder: '72x72',
+            ext: '.png',
+            size: '72x72',
+            className: 'emoji'
+          });
+        }
+      }, 50);
 
-        // Parse emojis in card icons
-        const cardIcons = document.querySelectorAll('[style*="width: 44px"][style*="height: 44px"]');
-        cardIcons.forEach(icon => {
-          if (icon.textContent && /[\u{1F000}-\u{1F9FF}]/u.test(icon.textContent)) {
-            window.twemoji.parse(icon, {
-              folder: 'svg',
-              ext: '.svg',
-              className: 'emoji'
-            });
-          }
-        });
-      }
+      // Parse emojis in card icons
+      const cardIcons = document.querySelectorAll('[style*="width: 44px"][style*="height: 44px"]');
+      cardIcons.forEach(icon => {
+        if (icon.textContent && /[\u{1F000}-\u{1F9FF}]/u.test(icon.textContent)) {
+          twemoji.parse(icon, {
+            base: 'https://cdn.jsdelivr.net/npm/twemoji@15.0.3/',
+            folder: '72x72',
+            ext: '.png',
+            size: '72x72',
+            className: 'emoji'
+          });
+        }
+      });
     };
 
     parseEmojis();
