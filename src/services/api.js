@@ -410,7 +410,24 @@ if (avatar && avatar.startsWith('data:image')) {
               body: payloadJson
             });
           } catch (e) {
-            console.error('[API] Update failed for class:', cls.name, 'Error:', e.message, e.body);
+                       // If 404, the record was deleted - try creating it instead
+            if (e.status === 404) {
+              console.warn('[API] Class not found (404), creating new record for:', cls.name);
+              try {
+                const created = await pbRequest('/collections/classes/records', {
+                  method: 'POST',
+                  body: payloadJson
+                });
+                processedIds.add(created.id);
+                if (cls.id && cls.id !== created.id) {
+                  idMappings.set(cls.id, created.id);
+                }
+              } catch (createError) {
+                console.error('[API] Create failed for class:', cls.name, 'Error:', createError.message);
+              }
+            } else {
+              console.error('[API] Update failed for class:', cls.name, 'Error:', e.message, e.body);
+            }
           }
         } else {
           try {
