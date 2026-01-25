@@ -6,7 +6,7 @@ export default defineConfig({
   base: './',
   server: {
     host: '0.0.0.0',
-    port: 5173,
+    port: 8080,
     allowedHosts: [ 'classabc.up.railway.app'],
     proxy: {
       '/api/api': {
