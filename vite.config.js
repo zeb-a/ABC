@@ -5,9 +5,8 @@ export default defineConfig({
   plugins: [react()],
   base: './',
    resolve: {
-    alias: {
-      twemoji: 'twemoji/dist/twemoji.esm.js'
-    }
+    mainFields: ['module', 'main'],
+    extensions: ['.js', '.json', '.jsx']
   },
   server: {
     host: '0.0.0.0',
