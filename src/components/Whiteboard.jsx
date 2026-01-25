@@ -4,7 +4,7 @@ import {
   Image as ImageIcon, Smile, Plus, Layers, ChevronLeft, ChevronRight
 } from 'lucide-react';
 import { motion } from 'framer-motion';
-import twemoji from 'twemoji/dist/twemoji.esm.js';
+import twemoji from 'twemoji';
 
 export default function Whiteboard({ onClose }) {
   const canvasRef = useRef(null);
