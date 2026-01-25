@@ -3,26 +3,15 @@ const base = (() => {
   if (import.meta.env.VITE_BACKEND_URL) {
     return import.meta.env.VITE_BACKEND_URL.replace(/\/$/, '') + '/api';
   }
-  // In both Dev and Production, /api works if you proxy in dev 
-  // and host together in production.
   return '/api'; 
 })();
 
-
-// Get auth token from localStorage
 function getToken() {
-  return localStorage.getItem('classABC_pb_token') || null;
+  return localStorage.getItem('class123_pb_token') || null;
 }
 
-// PocketBase uses an internal collection id for auth users. Use the id to avoid
-// name-based routing mismatches between PocketBase versions.
-const AUTH_COLL = '_pb_users_auth_';
-
 async function pbRequest(path, opts = {}) {
-  // / Ensure we don't double up on /api
-  const cleanPath = path.startsWith('/api') ? path.replace('/api', '') : path;
-  const url = `${base}${cleanPath}`;
-  // const url = `${base.replace(/\/$/, '')}${path}`;
+  const url = `${base.replace(/\/$/, '')}${path}`;
   const headers = opts.headers || {};
   const token = getToken();
   if (token) headers['Authorization'] = token;
@@ -30,10 +19,6 @@ async function pbRequest(path, opts = {}) {
   const res = await fetch(url, opts);
   const data = await res.json().catch(() => ({}));
   if (!res.ok) {
-    // Log helpful debug info so we can see PocketBase validation errors in the browser console
-    try {
-      console.error('[API] Request failed:', { url, status: res.status, requestBody: opts.body, responseBody: data });
-    } catch (e) { /* ignore logging errors */ }
     const err = new Error(data.message || `request-failed:${res.status}`);
     err.status = res.status;
     err.body = data;
@@ -130,7 +115,7 @@ async getStudentByParentCode(code) {
     }
   },
   async register({ email, password, name }) {
-    const user = await pbRequest(`/collections/${AUTH_COLL}/records`, {
+    const user = await pbRequest('/collections/users/records', {
       method: 'POST',
       body: JSON.stringify({
         email,
@@ -142,12 +127,12 @@ async getStudentByParentCode(code) {
 
     // Request email verification
     try {
-      await pbRequest(`/collections/${AUTH_COLL}/request-verification`, {
+      await pbRequest('/collections/users/request-verification', {
         method: 'POST',
         body: JSON.stringify({ email })
       });
     } catch (e) {
-      // ...existing code...
+      console.log('Verification email failed to send:', e.message);
     }
 
     return {
@@ -157,36 +142,35 @@ async getStudentByParentCode(code) {
   },
 
   async login({ email, password }) {
-    const auth = await pbRequest(`/collections/${AUTH_COLL}/auth-with-password`, {
+    const auth = await pbRequest('/collections/users/auth-with-password', {
       method: 'POST',
       body: JSON.stringify({ identity: email, password })
     });
 
-    // Enforce email verification: prevent teacher (and other) logins
-    // if the account hasn't been verified via email.
-    // PocketBase provides a boolean `verified` on the auth record.
-    if (!auth.record?.verified) {
-      const err = new Error('Please verify your email before logging in. Check your inbox for the verification link.');
-      err.status = 403;
-      err.body = { message: 'Email not verified' };
-      throw err;
-    }
+    // For now, allow login regardless of verification status
+    // PocketBase uses 'verified' field, not 'emailVerified'
+    // if (!auth.record?.verified) {
+    //   const err = new Error('Email not verified');
+    //   err.status = 403;
+    //   err.body = { message: 'Please verify your email first.' };
+    //   throw err;
+    // }
 
     if (auth.token) {
-      localStorage.setItem('classABC_pb_token', auth.token);
+      localStorage.setItem('class123_pb_token', auth.token);
     }
     return { user: { email: auth.record.email, name: auth.record.name, id: auth.record.id }, token: auth.token };
   },
 
   async forgotPassword(email) {
-    return await pbRequest(`/collections/${AUTH_COLL}/request-password-reset`, {
+    return await pbRequest('/collections/users/request-password-reset', {
       method: 'POST',
       body: JSON.stringify({ email })
     });
   },
 
   async verifyEmail(token) {
-    return await pbRequest(`/collections/${AUTH_COLL}/confirm-verification`, {
+    return await pbRequest('/collections/users/confirm-verification', {
       method: 'POST',
       body: JSON.stringify({ token })
     });
@@ -205,8 +189,7 @@ async getStudentByParentCode(code) {
     }
 
     // Handle avatar file upload
-    // Check if avatar is a base64 data URL (uploaded image)
-if (avatar && avatar.startsWith('data:image')) {
+    if (avatar && avatar.startsWith('')) {
       // Convert data URL to Blob
       try {
         const response = await fetch(avatar);
@@ -234,11 +217,11 @@ if (avatar && avatar.startsWith('data:image')) {
       throw new Error('Current password required to change password');
     }
 
-    // ...existing code...
+    console.log('[API] Updating profile for user:', id);
 
     // Update user with FormData (for file upload support)
     try {
-      const url = `${base.replace(/\/$/, '')}/collections/${AUTH_COLL}/records/${id}`;
+      const url = `${base.replace(/\/$/, '')}/collections/users/records/${id}`;
       const requestToken = getToken();
       const headers = {};
       if (requestToken) headers['Authorization'] = requestToken;
@@ -261,13 +244,12 @@ if (avatar && avatar.startsWith('data:image')) {
       // Construct proper avatar URL if it's a filename
       let avatarUrl = data.avatar;
       if (data.avatar && !data.avatar.startsWith('http') && !data.avatar.startsWith('')) {
-        // It's a filename, construct the full URL using the auth collection id
+        // It's a filename, construct the full URL
         const baseUrl = base.replace(/\/api$/, '');
-        // Add a timestamp (?t=...) to bypass browser cache so the new image shows immediately
-        avatarUrl = `${baseUrl}/api/files/${AUTH_COLL}/${data.id}/${data.avatar}?t=${Date.now()}`;
+        avatarUrl = `${baseUrl}/api/files/users/${data.id}/${data.avatar}`;
       }
 
-      // ...existing code...
+      console.log('[API] Profile update success');
       return { user: { email: data.email, name: data.name, avatar: avatarUrl, id: data.id } };
     } catch (err) {
       console.error('[API] Profile update failed:', err.message);
@@ -276,42 +258,82 @@ if (avatar && avatar.startsWith('data:image')) {
     }
   },
 
-// --- Behaviors (Select Multiple Support) ---
-  async getBehaviors(classId) {
-    const res = await pbRequest(`/collections/behaviors/records?filter=class="${classId}"&perPage=500`);
-    return (res.items || []).map(b => ({
-      ...b,
-      // Keep as array for frontend consistency if needed
-      type: Array.isArray(b.type) ? b.type : [b.type]
-    }));
+  // --- HANDLES GLOBAL 'behaviors' COLLECTION ---
+  async getBehaviors() {
+    try {
+      const res = await pbRequest('/collections/behaviors/records?perPage=500');
+      const items = res.items || [];
+      // Parse type field if it's a JSON string
+      return items.map(b => ({
+        ...b,
+        type: typeof b.type === 'string' && b.type.startsWith('[') ? JSON.parse(b.type)[0] : b.type
+      }));
+    } catch (err) {
+      console.error('[BEHAVIORS] Load error:', err.message);
+      throw err;
+    }
   },
 
-  async saveBehaviors(classId, behaviors) {
-    const res = await pbRequest(`/collections/behaviors/records?filter=class="${classId}"&perPage=500`);
-    const existingMap = new Map((res.items || []).map(i => [i.label, i]));
-    const results = [];
+  // --- HANDLES GLOBAL 'behaviors' COLLECTION ---
+  async saveBehaviors(arr) {
+    try {
+      // Get existing behaviors
+      const existing = await pbRequest('/collections/behaviors/records?perPage=500');
+      const existingMap = new Map((existing.items || []).map(b => [b.label, b]));
 
-    for (const behavior of behaviors) {
-      // Always send type as a string (first value if array, or fallback to 'wow')
-      const behaviorType = Array.isArray(behavior.type) ? (behavior.type[0] || 'wow') : (behavior.type || 'wow');
-
-      const payload = {
-        label: behavior.label,
-        pts: Number(behavior.pts) || 0,
-        type: behaviorType,
-        icon: behavior.icon,
-        class: classId
-      };
-
-      const existing = existingMap.get(behavior.label);
-      // Only send string for type, never array
-      if (existing) {
-        results.push(await pbRequest(`/collections/behaviors/records/${existing.id}`, { method: 'PATCH', body: JSON.stringify(payload) }));
-      } else {
-        results.push(await pbRequest('/collections/behaviors/records', { method: 'POST', body: JSON.stringify(payload) }));
+      // Update or create
+      for (const behavior of arr) {
+        const existingRecord = existingMap.get(behavior.label);
+        if (existingRecord && existingRecord.id) {
+          // Update existing
+          try {
+            await pbRequest(`/collections/behaviors/records/${existingRecord.id}`, {
+              method: 'PATCH',
+              body: JSON.stringify({
+                label: behavior.label,
+                pts: behavior.pts,
+                type: behavior.type,
+                icon: behavior.icon
+              })
+            });
+            existingMap.delete(behavior.label);
+          } catch (e) {
+            console.error('[BEHAVIORS] Update error:', e.message);
+          }
+        } else {
+          // Create new
+          try {
+            await pbRequest('/collections/behaviors/records', {
+              method: 'POST',
+              body: JSON.stringify({
+                label: behavior.label,
+                pts: behavior.pts,
+                type: behavior.type,
+                icon: behavior.icon
+              })
+            });
+          } catch (e) {
+            console.error('[BEHAVIORS] Create error:', e.message);
+          }
+        }
       }
+
+      // Delete ones not in arr
+      for (const [label, item] of existingMap) {
+        if (!arr.find(b => b.label === label) && item.id) {
+          try {
+            await pbRequest(`/collections/behaviors/records/${item.id}`, { method: 'DELETE' });
+          } catch (e) {
+            console.error('[BEHAVIORS] Delete error:', e.message);
+          }
+        }
+      }
+
+      return arr;
+    } catch (err) {
+      console.error('[BEHAVIORS] Save error:', err.message);
+      throw err;
     }
-    return results;
   },
 
   // --- HANDLES 'classes' COLLECTION (students & tasks) ---
@@ -340,7 +362,7 @@ if (avatar && avatar.startsWith('data:image')) {
 
   // --- MODIFIED: Saves class data, including students and tasks (from behaviors) ---
   // 'behaviorsForTasks' should be passed from the calling component (e.g., App.jsx)
-  async saveClasses(email, arr, behaviorsForTasks = []) {
+  async saveClasses(email, arr, behaviorsForTasks = []) { // Added behaviorsForTasks parameter
     try {
       // Get existing classes for this teacher
       const existing = await pbRequest('/collections/classes/records?perPage=500');
@@ -350,46 +372,13 @@ if (avatar && avatar.startsWith('data:image')) {
       const byId = new Map(userClasses.map(c => [c.id, c]));
       const byName = new Map(userClasses.map(c => [c.name, c]));
 
-      const processedIds = new Set();
-      const idMappings = new Map(); // Maps temporary IDs to PocketBase IDs
+      console.log('[API] Saving classes for', email, '- incoming:', arr.map(c => ({ name: c.name, id: c.id })));
+      console.log('[API] Existing in DB:', userClasses.map(c => ({ name: c.name, id: c.id })));
 
-      // Helper to check JSON size (PocketBase limit is 1MB = 1048576 bytes)
-      function isTooLarge(obj) {
-        try {
-          return JSON.stringify(obj).length > 900000; // Use 900KB for safety
-        } catch {
-          return false;
-        }
-      }
+      const processedIds = new Set();
 
       // Process each incoming class
       for (const cls of arr) {
-        // Trim assignments/students if too large
-        let assignments = Array.isArray(cls.assignments) ? [...cls.assignments] : [];
-        let students = Array.isArray(cls.students) ? [...cls.students] : [];
-        // Remove large fields from assignments if needed
-        if (isTooLarge(assignments)) {
-          assignments = assignments.slice(0, 100); // Only keep first 100
-        }
-        if (isTooLarge(students)) {
-          students = students.slice(0, 200); // Only keep first 200
-        }
-
-        const assignmentsJson = JSON.stringify(assignments);
-        const updatePayload = {
-          name: cls.name,
-          teacher: email,
-          avatar: cls.avatar || null,
-          students: JSON.stringify(students),
-          tasks: JSON.stringify(behaviorsForTasks),
-          assignments: assignmentsJson,
-          submissions: JSON.stringify(cls.submissions || []),
-          studentAssignments: JSON.stringify(cls.studentAssignments || []),
-          student_submissions: JSON.stringify(cls.student_submissions || []),
-          Access_Codes: cls.Access_Codes || {}
-        };
-        const payloadJson = JSON.stringify(updatePayload);
-
         // Try to match by PocketBase ID first, then by name
         let serverRecord = null;
         let pbId = null;
@@ -398,6 +387,7 @@ if (avatar && avatar.startsWith('data:image')) {
           serverRecord = byId.get(cls.id);
           pbId = cls.id;
         } else if (byName.has(cls.name)) {
+          // Fall back to name matching for classes created locally
           serverRecord = byName.get(cls.name);
           pbId = serverRecord.id;
         }
@@ -405,41 +395,47 @@ if (avatar && avatar.startsWith('data:image')) {
         if (serverRecord && pbId) {
           processedIds.add(pbId);
           try {
+            console.log('[API] Updating class', cls.name, 'ID:', pbId);
+            const updatePayload = {
+              name: cls.name,
+              teacher: email,
+              students: JSON.stringify(cls.students || []), // Serialize students to JSON
+              tasks: JSON.stringify(behaviorsForTasks),      // Serialize behaviors to 'tasks' JSON
+              assignments: JSON.stringify(cls.assignments || []), // Serialize assignments to JSON
+              submissions: JSON.stringify(cls.submissions || []), // Serialize submissions to JSON
+              studentAssignments: JSON.stringify(cls.studentAssignments || []), // Serialize student assignments to JSON
+              student_submissions: JSON.stringify(cls.student_submissions || []), // Serialize student submissions to JSON
+              Access_Codes: cls.Access_Codes || {}
+            };
+
             await pbRequest(`/collections/classes/records/${pbId}`, {
               method: 'PATCH',
-              body: payloadJson
+              body: JSON.stringify(updatePayload)
             });
+            console.log('[API] Successfully updated class:', cls.name);
           } catch (e) {
-                       // If 404, the record was deleted - try creating it instead
-            if (e.status === 404) {
-              console.warn('[API] Class not found (404), creating new record for:', cls.name);
-              try {
-                const created = await pbRequest('/collections/classes/records', {
-                  method: 'POST',
-                  body: payloadJson
-                });
-                processedIds.add(created.id);
-                if (cls.id && cls.id !== created.id) {
-                  idMappings.set(cls.id, created.id);
-                }
-              } catch (createError) {
-                console.error('[API] Create failed for class:', cls.name, 'Error:', createError.message);
-              }
-            } else {
-              console.error('[API] Update failed for class:', cls.name, 'Error:', e.message, e.body);
-            }
+            console.error('[API] Update failed for class:', cls.name, 'Error:', e.message, e.body);
+            // Continue with next class instead of throwing
           }
         } else {
+          // Create new ONLY if class has no ID
           try {
+            console.log('[API] Creating class', cls.name);
             const created = await pbRequest('/collections/classes/records', {
               method: 'POST',
-              body: payloadJson
+              body: JSON.stringify({
+                name: cls.name,
+                teacher: email,
+                students: JSON.stringify(cls.students || []), // Serialize students to JSON
+                tasks: JSON.stringify(behaviorsForTasks),      // Serialize behaviors to 'tasks' JSON
+                assignments: JSON.stringify(cls.assignments || []), // Serialize assignments to JSON
+                submissions: JSON.stringify(cls.submissions || []), // Serialize submissions to JSON
+                studentAssignments: JSON.stringify(cls.studentAssignments || []), // Serialize student assignments to JSON
+                student_submissions: JSON.stringify(cls.student_submissions || []) // Serialize student submissions to JSON              
+                })
             });
             processedIds.add(created.id);
-            // Store mapping from temporary ID to real PocketBase ID
-            if (cls.id && cls.id !== created.id) {
-              idMappings.set(cls.id, created.id);
-            }
+            console.log('[API] Created class with ID:', created.id);
           } catch (e) {
             console.error('[API] Create failed for class:', cls.name, 'Error:', e.message);
           }
@@ -447,8 +443,9 @@ if (avatar && avatar.startsWith('data:image')) {
       }
 
       // Delete records that are not in the incoming array
-      for (const [id] of byId) {
+      for (const [id, item] of byId) {
         if (!processedIds.has(id)) {
+          console.log('[API] Deleting class', item.name, 'ID:', id);
           try {
             await pbRequest(`/collections/classes/records/${id}`, { method: 'DELETE' });
           } catch (e) {
@@ -460,29 +457,6 @@ if (avatar && avatar.startsWith('data:image')) {
       return arr;
     } catch (err) {
       console.error('[API] Save error:', err.message);
-      throw err;
-    }
-  },
-
-  // Get the latest classes from PocketBase with real IDs
-  async getClassesSynced(email) {
-    try {
-      const res = await pbRequest('/collections/classes/records?perPage=500');
-      const classes = (res.items || []).filter(c => c.teacher === email);
-
-      // Parse JSON fields if they're strings
-      return classes.map(c => ({
-        ...c,
-        students: typeof c.students === 'string' ? JSON.parse(c.students || '[]') : (c.students || []),
-        tasks: typeof c.tasks === 'string' ? JSON.parse(c.tasks || '[]') : (c.tasks || []),
-        assignments: typeof c.assignments === 'string' ? JSON.parse(c.assignments || '[]') : (c.assignments || []),
-        submissions: typeof c.submissions === 'string' ? JSON.parse(c.submissions || '[]') : (c.submissions || []),
-        studentAssignments: typeof c.studentAssignments === 'string' ? JSON.parse(c.studentAssignments || '[]') : (c.studentAssignments || []),
-        student_submissions: typeof c.student_submissions === 'string' ? JSON.parse(c.student_submissions || '[]') : (c.student_submissions || []),
-        Access_Codes: typeof c.Access_Codes === 'string' ? JSON.parse(c.Access_Codes || '{}') : (c.Access_Codes || {})
-      }));
-    } catch (err) {
-      console.error('[CLASSES] Load error:', err.message);
       throw err;
     }
   },
@@ -523,7 +497,7 @@ if (avatar && avatar.startsWith('data:image')) {
   },
 
   setToken(token) {
-    if (token) localStorage.setItem('classABC_pb_token', token);
-    else localStorage.removeItem('classABC_pb_token');
+    if (token) localStorage.setItem('class123_pb_token', token);
+    else localStorage.removeItem('class123_pb_token');
   }
 };
