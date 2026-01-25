@@ -287,6 +287,12 @@ if (avatar && avatar.startsWith('data:image')) {
   },
 
   async saveBehaviors(classId, behaviors) {
+    // Safety check: ensure behaviors is an array
+    if (!Array.isArray(behaviors)) {
+      console.warn('[BEHAVIORS] saveBehaviors called with non-array:', behaviors);
+      return [];
+    }
+
     const res = await pbRequest(`/collections/behaviors/records?filter=class="${classId}"&perPage=500`);
     const existingMap = new Map((res.items || []).map(i => [i.label, i]));
     const results = [];
@@ -410,7 +416,7 @@ if (avatar && avatar.startsWith('data:image')) {
               body: payloadJson
             });
           } catch (e) {
-                       // If 404, the record was deleted - try creating it instead
+            // If 404, the record was deleted - try creating it instead
             if (e.status === 404) {
               console.warn('[API] Class not found (404), creating new record for:', cls.name);
               try {
