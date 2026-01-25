@@ -3,115 +3,12 @@ import { Edit2, Plus, X, RefreshCw, Trash2, Save } from 'lucide-react';
 import api from '../services/api';
 import InlineHelpButton from './InlineHelpButton';
 
-
-// Modern, fun stickers for kids - using high-quality SVG graphics from reliable CDN
-// These are styled as modern flat illustrations with bold colors
-const STICKER_OPTIONS = [
-  // Stars & Rewards
-  { id: 'star-yellow', emoji: '⭐', name: 'Gold Star' },
-  { id: 'star-blue', emoji: '🌟', name: 'Blue Star' },
-  { id: 'sparkle', emoji: '✨', name: 'Sparkle' },
-  { id: 'trophy', emoji: '🏆', name: 'Trophy' },
-  { id: 'medal', emoji: '🏅', name: 'Medal' },
-  { id: 'ribbon', emoji: '🎀', name: 'Ribbon' },
-  { id: 'crown', emoji: '👑', name: 'Crown' },
-  
-  // Celebrations
-  { id: 'party', emoji: '🎉', name: 'Party' },
-  { id: 'confetti', emoji: '🎊', name: 'Confetti' },
-  { id: 'fire', emoji: '🔥', name: 'On Fire' },
-  { id: 'rocket', emoji: '🚀', name: 'Rocket' },
-  { id: 'balloon', emoji: '🎈', name: 'Balloon' },
-  { id: 'gift', emoji: '🎁', name: 'Gift' },
-  
-  // Fun Characters
-  { id: 'robot', emoji: '🤖', name: 'Robot' },
-  { id: 'alien', emoji: '👽', name: 'Alien' },
-  { id: 'ghost', emoji: '👻', name: 'Ghost' },
-  { id: 'unicorn', emoji: '🦄', name: 'Unicorn' },
-  { id: 'dragon', emoji: '🐉', name: 'Dragon' },
-  { id: 'alien-cat', emoji: '🐱', name: 'Cat' },
-  { id: 'dog', emoji: '🐶', name: 'Dog' },
-  { id: 'fox', emoji: '🦊', name: 'Fox' },
-  { id: 'bear', emoji: '🐻', name: 'Bear' },
-  { id: 'panda', emoji: '🐼', name: 'Panda' },
-  { id: 'penguin', emoji: '🐧', name: 'Penguin' },
-  { id: 'owl', emoji: '🦉', name: 'Owl' },
-  { id: 'frog', emoji: '🐸', name: 'Frog' },
-  { id: 'turtle', emoji: '🐢', name: 'Turtle' },
-  { id: 'octopus', emoji: '🐙', name: 'Octopus' },
-  { id: 'butterfly', emoji: '🦋', name: 'Butterfly' },
-  
-  // Sports & Activities
-  { id: 'soccer', emoji: '⚽', name: 'Soccer' },
-  { id: 'basketball', emoji: '🏀', name: 'Basketball' },
-  { id: 'football', emoji: '🏈', name: 'Football' },
-  { id: 'tennis', emoji: '🎾', name: 'Tennis' },
-  { id: 'bowling', emoji: '🎳', name: 'Bowling' },
-  { id: 'music', emoji: '🎵', name: 'Music' },
-  { id: 'guitar', emoji: '🎸', name: 'Guitar' },
-  { id: 'microphone', emoji: '🎤', name: 'Microphone' },
-  { id: 'headphones', emoji: '🎧', name: 'Headphones' },
-  
-  // Nature & Weather
-  { id: 'sun', emoji: '☀️', name: 'Sunny' },
-  { id: 'moon', emoji: '🌙', name: 'Moon' },
-  { id: 'rainbow', emoji: '🌈', name: 'Rainbow' },
-  { id: 'cloud', emoji: '☁️', name: 'Cloud' },
-  { id: 'flower', emoji: '🌸', name: 'Flower' },
-  { id: 'tree', emoji: '🌳', name: 'Tree' },
-  { id: 'cactus', emoji: '🌵', name: 'Cactus' },
-  { id: 'mountain', emoji: '⛰️', name: 'Mountain' },
-  { id: 'beach', emoji: '🏖️', name: 'Beach' },
-  { id: 'island', emoji: '🏝️', name: 'Island' },
-  
-  // Food & Treats
-  { id: 'apple', emoji: '🍎', name: 'Apple' },
-  { id: 'pizza', emoji: '🍕', name: 'Pizza' },
-  { id: 'burger', emoji: '🍔', name: 'Burger' },
-  { id: 'icecream', emoji: '🍦', name: 'Ice Cream' },
-  { id: 'cake', emoji: '🎂', name: 'Cake' },
-  { id: 'cookie', emoji: '🍪', name: 'Cookie' },
-  { id: 'candy', emoji: '🍬', name: 'Candy' },
-  { id: 'donut', emoji: '🍩', name: 'Donut' },
-  
-  // Emotions & Faces
-  { id: 'smile', emoji: '😊', name: 'Smile' },
-  { id: 'laugh', emoji: '😄', name: 'Happy' },
-  { id: 'love', emoji: '😍', name: 'Love' },
-  { id: 'cool', emoji: '😎', name: 'Cool' },
-  { id: 'wink', emoji: '😉', name: 'Wink' },
-  { id: 'thinking', emoji: '🤔', name: 'Thinking' },
-  { id: 'surprised', emoji: '😮', name: 'Surprised' },
-  { id: 'angel', emoji: '😇', name: 'Angel' },
-  
-  // Actions & Gestures
-  { id: 'thumbsup', emoji: '👍', name: 'Thumbs Up' },
-  { id: 'clap', emoji: '👏', name: 'Clap' },
-  { id: 'heart', emoji: '❤️', name: 'Heart' },
-  { id: 'fist', emoji: '✊', name: 'Power' },
-  { id: 'wave', emoji: '👋', name: 'Wave' },
-  { id: 'shake', emoji: '🤝', name: 'Handshake' },
-  
-  // School & Learning
-  { id: 'book', emoji: '📚', name: 'Books' },
-  { id: 'pencil', emoji: '✏️', name: 'Pencil' },
-  { id: 'lightbulb', emoji: '💡', name: 'Idea' },
-  { id: 'brain', emoji: '🧠', name: 'Brain' },
-  { id: 'graduation', emoji: '🎓', name: 'Graduation' },
-  { id: 'backpack', emoji: '🎒', name: 'Backpack' },
-  { id: 'puzzle', emoji: '🧩', name: 'Puzzle' },
-  { id: 'compass', emoji: '🧭', name: 'Compass' },
-  { id: 'magnifier', emoji: '🔎', name: 'Search' },
-  { id: 'flag', emoji: '🚩', name: 'Goal' },
-  
-  // Positive Corrections
-  { id: 'warning', emoji: '⚠️', name: 'Warning' },
-  { id: 'bell', emoji: '🔔', name: 'Reminder' },
-  { id: 'speaker', emoji: '📢', name: 'Speaker' },
-  { id: 'shhh', emoji: '🤫', name: 'Quiet' },
-  { id: 'pause', emoji: '⏸️', name: 'Pause' },
-  { id: 'clock', emoji: '⏰', name: 'Time' },
+const EMOJI_OPTIONS = [
+  '⭐','🌟','✨','👏','🎉','🔥','💪','🤩','😊','😄','🙂','😍','😎','🤝','📚',
+  '📖','🏅','🥇','👍','👎','⚠️','❌','✅','❤️','💛','💚','💙','🧡','🤍','🧠','📝',
+  '🎯','🏆','🚀','🎒','🧩','🔔','📣','📢','🍎','🍪','⚽','🏀','🎵',
+  '😇','🤗','🤔','😅','😜','🦄','🌈','🍓','🍉','🥳','🤖','👑','💡','🔆','🧸','🛡️',
+  '🎖️','📎','🧪','⚡','🌱','🌻','🍀','🍁','🌊','🌙','☀️','🕶️','🎨','📌','🧭','🔭'
 ];
 
 export default function SettingsPage({ activeClass, behaviors, onBack, onUpdateBehaviors }) {
@@ -171,15 +68,6 @@ export default function SettingsPage({ activeClass, behaviors, onBack, onUpdateB
       z-index: 9999;
       opacity: 1;
       pointer-events: none;
-    }
-    /* Sticker button hover effects */
-    button[class*="sticker"] {
-      transition: all 0.2s ease;
-    }
-    button[class*="sticker"]:hover {
-      transform: scale(1.15);
-      border-color: #6366f1 !important;
-      box-shadow: 0 6px 20px rgba(99, 102, 241, 0.3);
     }`;
     document.head.appendChild(style);
     return () => { const el = document.getElementById('settings-mobile-styles'); if (el) el.remove(); };
@@ -211,46 +99,6 @@ export default function SettingsPage({ activeClass, behaviors, onBack, onUpdateB
       document.head.appendChild(style);
     }
   }, []);
-
-  // Parse emojis with Twemoji when emoji picker opens or cards render
-  React.useEffect(() => {
-    const parseEmojis = () => {
-      // Parse emojis in emoji picker
-      setTimeout(() => {
-        const emojiModal = document.querySelector('[style*="position: fixed"][style*="z-index: 3500"]');
-        if (emojiModal) {
-          twemoji.parse(emojiModal, {
-            base: 'https://cdn.jsdelivr.net/npm/twemoji@15.0.3/',
-            folder: '72x72',
-            ext: '.png',
-            size: '72x72',
-            className: 'emoji'
-          });
-        }
-      }, 50);
-
-      // Parse emojis in card icons
-      const cardIcons = document.querySelectorAll('[style*="width: 44px"][style*="height: 44px"]');
-      cardIcons.forEach(icon => {
-        if (icon.textContent && /[\u{1F000}-\u{1F9FF}]/u.test(icon.textContent)) {
-          twemoji.parse(icon, {
-            base: 'https://cdn.jsdelivr.net/npm/twemoji@15.0.3/',
-            folder: '72x72',
-            ext: '.png',
-            size: '72x72',
-            className: 'emoji'
-          });
-        }
-      });
-    };
-
-    parseEmojis();
-
-    // Also parse when emoji picker opens
-    if (openEmojiFor) {
-      setTimeout(parseEmojis, 100);
-    }
-  }, [openEmojiFor, cards]);
 
   // SettingsPage.jsx
 // Optimistic close: close UI immediately, save in background
@@ -336,16 +184,12 @@ const handleBackClick = () => {
               style={styles.headerIconBtn}
               onClick={async () => {
                 const INITIAL_BEHAVIORS = [
-                  { id: 1, label: 'Team Player', pts: 1, type: 'wow', icon: '🤝' },
-                  { id: 2, label: 'Super Star!', pts: 3, type: 'wow', icon: '🏆' },
-                  { id: 3, label: 'Creative', pts: 2, type: 'wow', icon: '🎨' },
-                  { id: 4, label: 'Brain Power', pts: 2, type: 'wow', icon: '🧠' },
-                  { id: 5, label: 'On Fire!', pts: 3, type: 'wow', icon: '🔥' },
-                  { id: 6, label: 'Kind Heart', pts: 1, type: 'wow', icon: '❤️' },
-                  { id: 7, label: 'Active', pts: 1, type: 'wow', icon: '⚽' },
-                  { id: 8, label: 'Rocket', pts: 2, type: 'wow', icon: '🚀' },
-                  { id: 9, label: 'Too Loud', pts: -1, type: 'nono', icon: '🔔' },
-                  { id: 10, label: 'Distracted', pts: -2, type: 'nono', icon: '😐' }
+                  { id: 1, label: 'Helped Friend', pts: 1, type: 'wow', icon: '🤝' },
+                  { id: 2, label: 'Great Work', pts: 2, type: 'wow', icon: '🌟' },
+                  { id: 3, label: 'On Task', pts: 1, type: 'wow', icon: '📖' },
+                  { id: 4, label: 'Kindness', pts: 1, type: 'wow', icon: '❤️' },
+                  { id: 5, label: 'Noisy', pts: -1, type: 'nono', icon: '📢' },
+                  { id: 6, label: 'Disruptive', pts: -2, type: 'nono', icon: '⚠️' }
                 ];
                 try {
                   await api.deleteNewCards();
@@ -407,34 +251,34 @@ const handleBackClick = () => {
                     <div style={styles.itemInfo}>
                       <div style={{ position: 'relative' }}>
                         {/* Only allow opening emoji picker when editing this card */}
-                        <Tooltip text="Change/choose avatar sticker">
+                        <Tooltip text="Change/choose avatar emoji">
                         <button
                           onClick={() => {
                             if (editingCardId === card.id) {
                               setOpenEmojiFor(openEmojiFor === card.id ? null : card.id);
                             }
                           }}
-                          style={{ ...styles.stickerBtn, width: 56, height: 56, fontSize: 32 }}
-                          aria-label="Pick sticker"
+                          style={{ ...styles.iconBtn, width: 44, height: 44, fontSize: 24 }}
+                          aria-label="Pick emoji"
                         >
                           {editingCardId === card.id ? (editingCard.icon) : (card.icon)}
                         </button>
                         </Tooltip>
                         {openEmojiFor === card.id && (
                           <div style={styles.centerEmojiModal} onClick={e => e.stopPropagation()}>
-                            <div style={styles.centerStickerGrid}>
-                              {STICKER_OPTIONS.map(sticker => (
-                                <Tooltip key={sticker.id} text={sticker.name}>
+                            <div style={styles.centerEmojiGrid}>
+                              {EMOJI_OPTIONS.map(em => (
+                                <Tooltip key={em} text={`Choose ${em}`}>
                                 <button onClick={() => {
                                   if (editingCardId === card.id) {
-                                    setEditingCard(prev => ({ ...prev, icon: sticker.emoji }));
+                                    setEditingCard(prev => ({ ...prev, icon: em }));
                                   } else {
-                                    const updated = cards.map(c => c.id === card.id ? { ...c, icon: sticker.emoji } : c);
+                                    const updated = cards.map(c => c.id === card.id ? { ...c, icon: em } : c);
                                     persistBehaviors(updated);
                                   }
                                   setOpenEmojiFor(null);
-                                }} style={{ ...styles.stickerBtn, padding: 12, fontSize: 32 }}>
-                                  {sticker.emoji}
+                                }} style={{ ...styles.emojiBtn, padding: 8, fontSize: 24 }}>
+                                  {em}
                                 </button>
                                 </Tooltip>
                               ))}
@@ -643,40 +487,13 @@ const styles = {
   miniAvatar: { width: '45px', height: '45px', borderRadius: '50%', background: '#f5f5f5' },
   itemActions: { display: 'flex', gap: '20px' },
   actionIcon: { cursor: 'pointer', color: '#94A3B8' },
-  stickerBtn: {
-    fontSize: '32px',
-    border: '2px solid #E6EEF8',
-    borderRadius: '16px',
-    padding: '12px',
-    cursor: 'pointer',
-    background: 'white',
-    transition: 'all 0.2s',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    boxShadow: '0 2px 8px rgba(0,0,0,0.05)',
-    filter: 'drop-shadow(0 1px 2px rgba(0,0,0,0.1))',
-  },
   emojiPickerBtn: { background: '#fff', border: '1px solid #E6EEF8', padding: '8px 12px', borderRadius: '10px', cursor: 'pointer', fontSize: '14px' },
   emojiGrid: { display: 'grid', gridTemplateColumns: 'repeat(8, 1fr)', gap: '6px', marginTop: 8, padding: '10px', background: 'rgba(255,255,255,0.9)', borderRadius: '12px', boxShadow: '0 8px 30px rgba(2,6,23,0.08)' },
   emojiBtn: { fontSize: '20px', border: 'none', borderRadius: '8px', padding: '8px', cursor: 'pointer', background: 'transparent' },
   // compact grid picker that appears in a centered top overlay
   verticalEmojiGrid: { position: 'absolute', left: -140, top: 0, display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 6, padding: 8, background: '#fff', borderRadius: 8, boxShadow: '0 8px 24px rgba(2,6,23,0.12)', zIndex: 2500 },
-  centerEmojiModal: { position: 'fixed', top: 72, left: '50%', transform: 'translateX(-50%)', zIndex: 3500, display: 'flex', justifyContent: 'center', width: 'min(900px, 95%)', pointerEvents: 'auto' },
-  centerStickerGrid: {
-    width: '100%',
-    background: '#fff',
-    padding: 16,
-    borderRadius: 16,
-    boxShadow: '0 20px 60px rgba(2,6,23,0.12)',
-    display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fit, minmax(56px, 1fr))',
-    gap: 12,
-    justifyItems: 'center',
-    alignItems: 'center',
-    maxHeight: '70vh',
-    overflowY: 'auto',
-  },
+  centerEmojiModal: { position: 'fixed', top: 72, left: '50%', transform: 'translateX(-50%)', zIndex: 3500, display: 'flex', justifyContent: 'center', width: 'min(760px, 90%)', pointerEvents: 'auto' },
+  centerEmojiGrid: { width: '100%', background: '#fff', padding: 12, borderRadius: 12, boxShadow: '0 20px 60px rgba(2,6,23,0.12)', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(44px, 1fr))', gap: 8, justifyItems: 'center', alignItems: 'center' },
   verticalActionStack: { display: 'flex', flexDirection: 'column', gap: 8, alignItems: 'center' },
   hoverIcons: { position: 'absolute', top: 12, right: 12, display: 'flex', gap: 8 },
   // small circular icon button used in the modern controls
