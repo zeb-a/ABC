@@ -378,6 +378,7 @@ if (avatar && avatar.startsWith('data:image')) {
         const updatePayload = {
           name: cls.name,
           teacher: email,
+          avatar: cls.avatar || null,
           students: JSON.stringify(students),
           tasks: JSON.stringify(behaviorsForTasks),
           assignments: assignmentsJson,

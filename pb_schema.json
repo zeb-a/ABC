@@ -82,6 +82,12 @@
       },
       {
         "system": false,
+        "id": "avatar_field",
+        "name": "avatar",
+        "type": "text"
+      },
+      {
+        "system": false,
         "id": "students_field",
         "name": "students",
         "type": "json"
@@ -94,14 +100,32 @@
       },
       {
         "system": false,
+        "id": "assignments_field",
+        "name": "assignments",
+        "type": "json"
+      },
+      {
+        "system": false,
         "id": "submissions_field",
         "name": "submissions",
         "type": "json"
       },
       {
         "system": false,
+        "id": "studentAssignments_field",
+        "name": "studentAssignments",
+        "type": "json"
+      },
+      {
+        "system": false,
         "id": "student_submissions_field",
         "name": "student_submissions",
+        "type": "json"
+      },
+      {
+        "system": false,
+        "id": "Access_Codes_field",
+        "name": "Access_Codes",
         "type": "json"
       }
     ]

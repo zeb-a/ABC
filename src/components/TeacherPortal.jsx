@@ -55,6 +55,7 @@ const internalCSS = `
 export default function TeacherPortal({ user, classes, onSelectClass, onAddClass, onLogout, onEditProfile, updateClasses }) {
   const [isMobile, setIsMobile] = useState(typeof window !== 'undefined' ? window.innerWidth <= 768 : false);
   const [showAddModal, setShowAddModal] = useState(false);
+  const teacherEmail = user?.email;
 
   useEffect(() => {
     const onResize = () => setIsMobile(window.innerWidth <= 768);
@@ -90,6 +91,7 @@ export default function TeacherPortal({ user, classes, onSelectClass, onAddClass
     const newClass = {
       id: Date.now(),
       name: newClassName,
+      teacher: teacherEmail,
       students: [],
       avatar: newClassAvatar || boringAvatar(newClassName || 'class'),
       stats: { stars: 0, eggs: 0 }
