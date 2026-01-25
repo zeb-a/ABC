@@ -198,7 +198,9 @@ function App() {
   // Save classes to backend whenever classes change (no activeClassId required)
   useEffect(() => {
     const token = localStorage.getItem('classABC_pb_token') || localStorage.getItem('classABC_token');
-    if (!user || !token || isSavingRef.current) return;
+    // Only save if user is logged in AND not in portal view (portal = student/parent view)
+    // Students should never be saving class data as they can trigger deletions of other classes
+    if (!user || !token || isSavingRef.current || view === 'portal') return;
 
     if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
     saveTimeoutRef.current = setTimeout(async () => {
@@ -224,7 +226,7 @@ function App() {
     }, 1000);
 
     return () => { if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current); };
-  }, [classes, user]);
+  }, [classes, user, view]);
 
   const onLoginSuccess = (u) => {
     api.setToken(u.token);
