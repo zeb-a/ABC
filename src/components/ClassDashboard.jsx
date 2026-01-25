@@ -168,8 +168,7 @@ export default function ClassDashboard({
   onOpenEggRoad,
   onOpenSettings,
   updateClasses,
-  onOpenAssignments,
-  user
+  onOpenAssignments
 }) {
   // Handler to merge imported behaviors from another class into the active class.
   // Listens for the custom event dispatched by BehaviorModal when the user requests an import.
@@ -996,31 +995,13 @@ export default function ClassDashboard({
                 <AssignmentsPage
                   activeClass={activeClass}
                   onBack={() => setViewMode('dashboard')}
-                  onPublish={async (data) => {
+                  onPublish={(data) => {
                     // This logic replaces the "missing" onOpenAssignments
-                    const newAssignment = {
-                      ...data,
-                      id: Date.now() // Add unique ID to each assignment
-                    };
-                    let newClasses;
-                    updateClasses(prev => {
-                      newClasses = prev.map(c =>
-                        c.id === activeClass.id
-                          ? { ...c, assignments: [...(c.assignments || []), newAssignment] }
-                          : c
-                      );
-                      return newClasses;
-                    });
-
-                    // Persist to backend
-                    if (user?.email) {
-                      try {
-                        await api.saveClasses(user.email, newClasses, behaviors);
-                      } catch (error) {
-                        console.error("Error saving assignment to backend:", error);
-                      }
-                    }
-
+                    updateClasses(prev => prev.map(c =>
+                      c.id === activeClass.id
+                        ? { ...c, assignments: [...(c.assignments || []), data] }
+                        : c
+                    ));
                     // Go back after publishing
                     setViewMode('dashboard');
                   }}
@@ -1411,7 +1392,6 @@ export default function ClassDashboard({
 
 const styles = {
   layout: { display: 'flex', height: '100vh', background: '#F4F1EA', position: 'relative', overflow: 'hidden' },
-  sidebar: { width: '80px', background: 'white', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '30px', padding: '30px 0', borderRight: '1px solid #ddd' },
   icon: { cursor: 'pointer', transition: 'color 0.2s', position: 'relative' },
   content: { flex: 1, display: 'flex', flexDirection: 'column', transition: 'margin-left 0.3s ease', height: '100vh', overflowY: 'auto' },
   // header: { maxWidth: '1200px',padding: '0 20px', background: 'linear-gradient(90deg,#fff,#F8FFF8)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '20px', boxShadow: '0 6px 18px rgba(16,24,40,0.06)', borderBottomLeftRadius: 12, borderBottomRightRadius: 12 },
