@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Edit2, Plus, X, RefreshCw, Trash2, Save } from 'lucide-react';
 import api from '../services/api';
 import InlineHelpButton from './InlineHelpButton';
-import twemoji from 'twemoji';
+import twemoji from 'twemoji/dist/twemoji.esm.js';
 
 // Modern, fun stickers for kids - using high-quality SVG graphics from reliable CDN
 // These are styled as modern flat illustrations with bold colors
