@@ -414,22 +414,30 @@ if (avatar && avatar.startsWith('data:image')) {
         // Try to match by PocketBase ID first, then by name
         let serverRecord = null;
         let pbId = null;
+        let matchedById = false;
 
-        if (cls.id && byId.has(cls.id)) {
+        if (cls.id && cls.id.length === 15 && byId.has(cls.id)) {
+          // Only match by ID if it's a proper PocketBase ID (15 chars)
           serverRecord = byId.get(cls.id);
           pbId = cls.id;
+          matchedById = true;
         } else if (byName.has(cls.name)) {
           serverRecord = byName.get(cls.name);
           pbId = serverRecord.id;
+          matchedById = false;
         }
 
         if (serverRecord && pbId) {
           processedIds.add(pbId);
           try {
-            await pbRequest(`/collections/classes/records/${pbId}`, {
+            const updated = await pbRequest(`/collections/classes/records/${pbId}`, {
               method: 'PATCH',
               body: payloadJson
             });
+            // Store mapping from old ID to real PocketBase ID if matched by name
+            if (!matchedById && cls.id && cls.id !== pbId) {
+              idMappings.set(cls.id, pbId);
+            }
           } catch (e) {
             // If 404, the record was deleted - try creating it instead
             if (e.status === 404) {
