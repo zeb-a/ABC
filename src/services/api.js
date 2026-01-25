@@ -463,7 +463,19 @@ if (avatar && avatar.startsWith('data:image')) {
         }
       }
 
-      return arr;
+      // Return properly synced classes from server (fetch fresh data)
+      const syncedRes = await pbRequest('/collections/classes/records?perPage=500');
+      const syncedClasses = (syncedRes.items || []).filter(c => c.teacher === email);
+      return syncedClasses.map(c => ({
+        ...c,
+        students: typeof c.students === 'string' ? JSON.parse(c.students || '[]') : (c.students || []),
+        tasks: typeof c.tasks === 'string' ? JSON.parse(c.tasks || '[]') : (c.tasks || []),
+        assignments: typeof c.assignments === 'string' ? JSON.parse(c.assignments || '[]') : (c.assignments || []),
+        submissions: typeof c.submissions === 'string' ? JSON.parse(c.submissions || '[]') : (c.submissions || []),
+        studentAssignments: typeof c.studentAssignments === 'string' ? JSON.parse(c.studentAssignments || '[]') : (c.studentAssignments || []),
+        student_submissions: typeof c.student_submissions === 'string' ? JSON.parse(c.student_submissions || '[]') : (c.student_submissions || []),
+        Access_Codes: typeof c.Access_Codes === 'string' ? JSON.parse(c.Access_Codes || '{}') : (c.Access_Codes || {})
+      }));
     } catch (err) {
       console.error('[API] Save error:', err.message);
       throw err;

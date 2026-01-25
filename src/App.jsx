@@ -195,8 +195,7 @@ function App() {
     if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
     saveTimeoutRef.current = setTimeout(async () => {
       try {
-        await api.saveClasses(user.email, classes, behaviors);
-        // After saving, reload classes from PocketBase to get real IDs
+        // Get all classes from server (includes newly created ones)
         const syncedClasses = await api.getClassesSynced(user.email);
         // Update active class ID if it was using a temporary ID
         if (activeClassId && !syncedClasses.find(c => c.id === activeClassId)) {
