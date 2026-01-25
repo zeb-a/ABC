@@ -293,6 +293,12 @@ if (avatar && avatar.startsWith('data:image')) {
       return [];
     }
 
+    // Only save behaviors if classId is a valid PocketBase ID (15 chars)
+    if (!classId || classId.length !== 15) {
+      console.warn('[BEHAVIORS] Invalid classId, skipping save:', classId);
+      return [];
+    }
+
     try {
       const res = await pbRequest(`/collections/behaviors/records?filter=class="${classId}"&perPage=500`);
       const existingMap = new Map((res.items || []).map(i => [i.label, i]));
@@ -481,7 +487,10 @@ if (avatar && avatar.startsWith('data:image')) {
           try {
             await pbRequest(`/collections/classes/records/${id}`, { method: 'DELETE' });
           } catch (e) {
-            console.error('[API] Delete failed for class ID:', id, 'Error:', e.message);
+            // Ignore 404 - record might already be deleted or never existed on server
+            if (e.status !== 404) {
+              console.error('[API] Delete failed for class ID:', id, 'Error:', e.message);
+            }
           }
         }
       }

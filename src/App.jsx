@@ -66,6 +66,8 @@ function App() {
   const [showGuide, setShowGuide] = useState(false);
 
   const saveTimeoutRef = useRef(null);
+  const isSavingRef = useRef(false);
+  const shouldSkipLoadRef = useRef(false);
 
   // Check for email verification token in URL
   const verificationToken = useMemo(() => {
@@ -94,6 +96,9 @@ function App() {
     const token = localStorage.getItem('classABC_pb_token') || localStorage.getItem('classABC_token');
     if (token) api.setToken(token);
 
+    // Only load on mount or when user changes, not when classes change
+    if (shouldSkipLoadRef.current) return;
+    shouldSkipLoadRef.current = true;
 
     let mounted = true;
 
@@ -173,31 +178,48 @@ function App() {
   // Save behaviors to backend when an active class is selected
   useEffect(() => {
     const token = localStorage.getItem('classABC_pb_token') || localStorage.getItem('classABC_token');
-    if (!user || !token || !activeClassId) return;
+    if (!user || !token || !activeClassId || isSavingRef.current) return;
 
     if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
     saveTimeoutRef.current = setTimeout(async () => {
+      isSavingRef.current = true;
       try {
         await api.saveBehaviors(activeClassId, behaviors);
       } catch (e) {
         console.error('Save behaviors failed:', e.message);
+      } finally {
+        isSavingRef.current = false;
       }
     }, 800);
 
     return () => { if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current); };
-  }, [behaviors, user, activeClassId]);
+  }, [behaviors, user, activeClassId, isSavingRef]); // Add isSavingRef to prevent re-triggering during save
 
   // Save classes to backend whenever classes change (no activeClassId required)
   useEffect(() => {
     const token = localStorage.getItem('classABC_pb_token') || localStorage.getItem('classABC_token');
-    if (!user || !token) return;
+    if (!user || !token || isSavingRef.current) return;
 
     if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
     saveTimeoutRef.current = setTimeout(async () => {
+      isSavingRef.current = true;
       try {
-        await api.saveClasses(user.email, classes, behaviors);
+        // Save to backend and get back classes with mapped IDs
+        const updatedClasses = await api.saveClasses(user.email, classes, behaviors);
+        // Update activeClassId if it was mapped from a temp ID to a real ID
+        setActiveClassId(prev => {
+          if (!prev) return null;
+          const updatedClass = updatedClasses.find(c => {
+            // Find the class that corresponds to the current active class
+            const currentClass = classes.find(c => c.id === prev);
+            return currentClass && c.name === currentClass.name;
+          });
+          return updatedClass?.id || prev;
+        });
       } catch (e) {
         console.error('Save classes failed:', e.message);
+      } finally {
+        isSavingRef.current = false;
       }
     }, 1000);
 
@@ -239,6 +261,8 @@ function App() {
         }
         // eslint-disable-next-line no-unused-vars, no-empty
       } catch (e) { }
+      // Reset the skip flag so next load will fetch fresh data
+      shouldSkipLoadRef.current = false;
       return next;
     });
   };
