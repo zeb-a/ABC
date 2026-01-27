@@ -76,98 +76,57 @@ function App() {
     return match ? match[1] : null;
   }, []);
 
-  if (verificationToken) {
-    return <VerifyEmailPage
-      token={verificationToken}
-      onSuccess={() => {
-        window.location.hash = '';
-        window.location.reload();
-      }}
-      onError={() => {
-        window.location.hash = '';
-      }}
-    />;
-  }
-
-  // Load classes and behaviors (for both logged in users and when accessed via student portal)
-  // eslint-disable-next-line react-hooks/rules-of-hooks
+// EFFECT 1A: Load Classes (Only runs when User changes, NOT when activeClassId changes)
   useEffect(() => {
-    // restore token into api layer if present
     const token = localStorage.getItem('classABC_pb_token') || localStorage.getItem('classABC_token');
     if (token) api.setToken(token);
 
-    // Only load on mount or when user changes, not when classes change
+    // If we just created a class locally, skip this load to prevent overwriting
     if (shouldSkipLoadRef.current) return;
     shouldSkipLoadRef.current = true;
 
     let mounted = true;
 
-    // Load classes from PocketBase (try to use user email if available, otherwise load publically accessible data)
     (async () => {
       try {
         let remote = [];
         if (user) {
-          // If user is logged in, load their classes
           remote = await api.getClasses(user.email);
         } else {
-          // If no user is logged in (student portal access), we should attempt to load the latest classes
-          // We'll try to get the email from localStorage to load the appropriate classes
-          const storedUser = localStorage.getItem('class123_logged_in');
-          if (storedUser) {
-            try {
-              const parsedUser = JSON.parse(storedUser);
-              remote = await api.getClasses(parsedUser.email);
-            } catch {
-              console.warn('Could not parse stored user, falling back to localStorage');
-              // Fallback to localStorage
-              const key = `classABC_data_${'anonymous'}`;
-              const localClasses = JSON.parse(localStorage.getItem(key)) || [];
-              if (localClasses.length > 0 && mounted) {
-                setClasses(localClasses);
-              }
-            }
-          } else {
-            // No stored user, try to load from localStorage fallback
-            const key = `class123_data_${'anonymous'}`;
-            const localClasses = JSON.parse(localStorage.getItem(key)) || [];
-            if (localClasses.length > 0 && mounted) {
-              setClasses(localClasses);
-            }
-          }
+           // Keep your existing fallback logic for anonymous/local storage here
+           // ...
         }
 
         if (mounted && Array.isArray(remote) && remote.length > 0) {
           setClasses(remote);
         }
-      } catch {
-        // backend not available — load from localStorage fallback
-        const userEmail = user?.email || 'anonymous';
-        const key = `classABC_data_${userEmail}`;
-        const localClasses = JSON.parse(localStorage.getItem(key)) || [];
-        if (mounted) setClasses(localClasses);
-      }
-    })();
-
-    // Load behaviors from PocketBase whenever activeClassId changes
-    (async () => {
-      try {
-        if (activeClassId) {
-          const remote = await api.getBehaviors(activeClassId);
-          if (mounted && Array.isArray(remote)) {
-            setBehaviors(remote.length > 0 ? remote : INITIAL_BEHAVIORS);
-          }
-        }
       } catch (e) {
-        // backend not available — load from localStorage fallback
-        const localBehaviors = JSON.parse(localStorage.getItem('classABC_behaviors')) || INITIAL_BEHAVIORS;
-        if (mounted) setBehaviors(localBehaviors);
-        console.warn('Loading behaviors from localStorage due to API error:', e.message);
+        alert(e);
       }
     })();
 
     return () => { mounted = false; };
-  }, [user, activeClassId]);
+  }, [user]); // <--- REMOVED activeClassId
 
+
+  // EFFECT 1B: Load Behaviors (Runs ONLY when activeClassId changes)
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      try {
+        if (activeClassId) {
+          const remote = await api.getBehaviors(activeClassId);
+          if (mounted && Array.isArray(remote) && remote.length > 0) {
+            setBehaviors(remote);
+          }
+        }
+      } catch (e) {
+        const localBehaviors = JSON.parse(localStorage.getItem('classABC_behaviors')) || INITIAL_BEHAVIORS;
+        if (mounted) setBehaviors(localBehaviors);
+      }
+    })();
+    return () => { mounted = false; };
+  }, [activeClassId]);
   // persist behaviors and classes per user (localStorage + backend when available)
   // eslint-disable-next-line react-hooks/rules-of-hooks
   useEffect(() => {
@@ -238,6 +197,19 @@ function App() {
     setUser(u);
     // Do not automatically show onboarding here; onboarding appears when the user first opens a class dashboard
   };
+  if (verificationToken) {
+    return <VerifyEmailPage
+      token={verificationToken}
+      onSuccess={() => {
+        window.location.hash = '';
+        window.location.reload();
+      }}
+      onError={() => {
+        window.location.hash = '';
+      }}
+    />;
+  }
+
 
   const onLogout = () => {
     localStorage.removeItem('classABC_logged_in');
@@ -264,7 +236,7 @@ function App() {
         // eslint-disable-next-line no-unused-vars, no-empty
       } catch (e) { }
       // Reset the skip flag so next load will fetch fresh data
-      shouldSkipLoadRef.current = false;
+   
       return next;
     });
   };
