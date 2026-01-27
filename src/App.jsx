@@ -69,12 +69,6 @@ function App() {
   const isSavingRef = useRef(false);
   const shouldSkipLoadRef = useRef(false);
 
-  // Check for email verification token in URL
-  const verificationToken = useMemo(() => {
-    const hash = window.location.hash;
-    const match = hash.match(/confirm-verification\/([^/]+)/);
-    return match ? match[1] : null;
-  }, []);
 
 // EFFECT 1A: Load Classes (Only runs when User changes, NOT when activeClassId changes)
   useEffect(() => {
@@ -128,7 +122,6 @@ function App() {
     return () => { mounted = false; };
   }, [activeClassId]);
   // persist behaviors and classes per user (localStorage + backend when available)
-  // eslint-disable-next-line react-hooks/rules-of-hooks
   useEffect(() => {
     // Always persist behaviors to localStorage for offline fallback
     localStorage.setItem('classABC_behaviors', JSON.stringify(behaviors));
@@ -186,6 +179,13 @@ function App() {
 
     return () => { if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current); };
   }, [classes, user, view]);
+  
+  // Check for email verification token in URL
+  const verificationToken = useMemo(() => {
+    const hash = window.location.hash;
+    const match = hash.match(/confirm-verification\/([^/]+)/);
+    return match ? match[1] : null;
+  }, []);
 
   const onLoginSuccess = (u) => {
     api.setToken(u.token);
